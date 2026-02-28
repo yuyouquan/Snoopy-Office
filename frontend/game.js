@@ -109,7 +109,7 @@ let selectedCharacter = null;
 let animationFrame = 0;
 let isRunning = true;
 let gameSpeed = 1;
-let useRealTimeData = false; // 是否使用实时数据
+let useRealTimeData = true; // 默认开启实时数据
 
 // 实时数据API配置
 const API_CONFIG = {
@@ -216,7 +216,17 @@ async function fetchRealTimeStatus() {
  * 从状态数据更新角色
  */
 function updateCharactersFromStatus(status) {
-    if (!status || !status.roles) return;
+    // 兼容两种API格式：
+    // 1. { roles: [...] } - 旧格式
+    // 2. { data: { characters: [...] } } - 新格式
+    let roles = [];
+    if (status.roles) {
+        roles = status.roles;
+    } else if (status.data && status.data.characters) {
+        roles = status.data.characters;
+    }
+    
+    if (!roles || roles.length === 0) return;
     
     status.roles.forEach(roleData => {
         const char = characters.find(c => c.id === roleData.id);
