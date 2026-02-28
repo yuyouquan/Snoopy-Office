@@ -1,0 +1,17 @@
+{
+  "name": "snoopy-office",
+  "version": "1.0.0",
+  "description": "像素风格AI助手状态可视化Web应用",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuyouquan/Snoopy-Office.git"
+  },
+  "keywords": ["pixel-art", "office", "ai-assistant"],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs"
+}
