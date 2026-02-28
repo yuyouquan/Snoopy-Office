@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    { "source": "/api/status", "destination": "/api/status/index.js" },
+    { "source": "/api/status/(.*)", "destination": "/api/status/index.js" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" },
+        { "key": "Content-Type", "value": "application/json" }
+      ]
+    }
+  ]
+}
