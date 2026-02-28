@@ -347,7 +347,7 @@ function simulateOpenClawStatus() {
             
             // 触发烟花庆祝
             const pos = getZoneCenter(char.zone);
-            FireworkSystem.celebrate(pos.x, pos.y - 30);
+            FireworkSystem.celebrate(pos.x, pos.y - 30, newTask);
             
             // 记录区域访问
             ZoneStats.recordVisit(char.zone);
@@ -507,6 +507,9 @@ function render() {
     FireworkSystem.update();
     FireworkSystem.draw(ctx);
     
+    // 绘制全屏庆祝消息
+    FireworkSystem.drawCelebrationMessage(ctx);
+    
     // 绘制选中高亮
     if (selectedCharacter) {
         drawSelectionHighlight();
@@ -536,6 +539,12 @@ function drawZones() {
         ctx.fillStyle = zone.color + '40';
         ctx.fillRect(zone.x, zone.y, zone.width, zone.height);
         
+        // 热力图效果（如果启用）
+        if (ZoneStats.heatmapEnabled && ZoneStats.visits[key] > 0) {
+            ctx.fillStyle = ZoneStats.getZoneHeatmapColor(key);
+            ctx.fillRect(zone.x, zone.y, zone.width, zone.height);
+        }
+        
         // 区域边框
         ctx.strokeStyle = zone.color;
         ctx.lineWidth = 2;
@@ -545,6 +554,13 @@ function drawZones() {
         ctx.fillStyle = COLORS.white;
         ctx.font = '12px "Courier New"';
         ctx.fillText(zone.name, zone.x + 5, zone.y + 15);
+        
+        // 显示访问次数（如果有）
+        if (ZoneStats.heatmapEnabled && ZoneStats.visits[key] > 0) {
+            ctx.fillStyle = COLORS.yellow;
+            ctx.font = '10px "Courier New"';
+            ctx.fillText(`(${ZoneStats.visits[key]})`, zone.x + zone.width - 25, zone.y + zone.height - 5);
+        }
     });
 }
 
@@ -969,6 +985,8 @@ function importState(file) {
 // ==================== 烟花庆祝系统 ====================
 const FireworkSystem = {
     particles: [],
+    celebrationActive: false,
+    celebrationMessage: '',
     
     // 创建烟花
     create(x, y) {
@@ -1012,17 +1030,86 @@ const FireworkSystem = {
     },
     
     // 触发庆祝（任务完成时调用）
-    celebrate(x, y) {
+    celebrate(x, y, taskName = '') {
         this.create(x, y);
         // 再创建几个小的
         setTimeout(() => this.create(x - 30, y - 20), 100);
         setTimeout(() => this.create(x + 30, y - 10), 200);
+        
+        // 触发全屏庆祝效果
+        if (taskName) {
+            this.triggerFullscreenCelebration(taskName);
+        }
+    },
+    
+    // 全屏庆祝效果
+    triggerFullscreenCelebration(taskName) {
+        this.celebrationActive = true;
+        this.celebrationMessage = taskName;
+        this.celebrationFrame = 0;
+        
+        // 创建大量彩带粒子
+        const colors = [COLORS.red, COLORS.orange, COLORS.yellow, COLORS.green, COLORS.blue, COLORS.pink];
+        for (let i = 0; i < 50; i++) {
+            const x = Math.random() * canvas.width;
+            const y = -10 - Math.random() * 100;
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 4,
+                vy: 2 + Math.random() * 3,
+                color: color,
+                life: 120 + Math.random() * 60,
+                size: 4 + Math.random() * 4,
+                isConfetti: true
+            });
+        }
+        
+        // 3秒后结束庆祝
+        setTimeout(() => {
+            this.celebrationActive = false;
+            this.celebrationMessage = '';
+        }, 3000);
+    },
+    
+    // 绘制全屏庆祝消息
+    drawCelebrationMessage(ctx) {
+        if (!this.celebrationActive || !this.celebrationMessage) return;
+        
+        this.celebrationFrame = (this.celebrationFrame || 0) + 1;
+        const alpha = Math.min(1, (60 - this.celebrationFrame) / 30);
+        
+        // 绘制半透明背景
+        ctx.fillStyle = `rgba(0, 0, 0, ${alpha * 0.5})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 绘制消息
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // 发光效果
+        ctx.shadowColor = COLORS.yellow;
+        ctx.shadowBlur = 20;
+        
+        ctx.fillStyle = `rgba(255, 236, 39, ${alpha})`;
+        ctx.font = 'bold 32px "Courier New"';
+        ctx.fillText('🎉 任务完成!', canvas.width / 2, canvas.height / 2 - 30);
+        
+        ctx.shadowBlur = ctx.fillStyle = 10;
+        `rgba(255, 255, 255, ${alpha})`;
+        ctx.font = '20px "Courier New"';
+        ctx.fillText(this.celebrationMessage, canvas.width / 2, canvas.height / 2 + 20);
+        
+        ctx.restore();
     }
 };
 
 // ==================== 区域访问统计 ====================
 const ZoneStats = {
     visits: {}, // { zoneKey: count }
+    heatmapEnabled: true,
     
     init() {
         Object.keys(ZONES).forEach(key => {
@@ -1042,16 +1129,117 @@ const ZoneStats = {
             .slice(0, 3);
     },
     
-    getZoneColor(zoneKey) {
+    getZoneHeatmapColor(zoneKey) {
         const maxVisits = Math.max(...Object.values(this.visits), 1);
         const visits = this.visits[zoneKey] || 0;
         const intensity = visits / maxVisits;
-        return `rgba(255, 255, 255, ${0.1 + intensity * 0.3})`;
+        
+        // 从蓝色到红色的热力图渐变
+        if (intensity < 0.25) return `rgba(0, 100, 255, ${0.1 + intensity * 0.2})`;
+        if (intensity < 0.5) return `rgba(0, 255, 255, ${0.2 + intensity * 0.2})`;
+        if (intensity < 0.75) return `rgba(255, 255, 0, ${0.3 + intensity * 0.2})`;
+        return `rgba(255, 100, 0, ${0.4 + intensity * 0.3})`;
+    },
+    
+    toggleHeatmap() {
+        this.heatmapEnabled = !this.heatmapEnabled;
+        return this.heatmapEnabled;
     }
 };
 
 // 初始化区域统计
 ZoneStats.init();
+
+// ==================== 角色状态时间线图表系统 ====================
+const StatusTimelineChart = {
+    chartData: {},
+    
+    // 记录状态变化
+    recordStatus(charId, status, task, progress) {
+        if (!this.chartData[charId]) {
+            this.chartData[charId] = [];
+        }
+        
+        const now = Date.now();
+        this.chartData[charId].push({
+            time: now,
+            status: status,
+            task: task,
+            progress: progress
+        });
+        
+        // 只保留最近50条记录
+        if (this.chartData[charId].length > 50) {
+            this.chartData[charId] = this.chartData[charId].slice(-50);
+        }
+    },
+    
+    // 获取图表数据
+    getChartData(charId) {
+        return this.chartData[charId] || [];
+    },
+    
+    // 获取所有角色的今日统计
+    getTodayStats() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayMs = today.getTime();
+        
+        const stats = {
+            totalTasks: 0,
+            totalWorkingTime: 0,
+            statusChanges: 0,
+            byRole: {}
+        };
+        
+        Object.entries(this.chartData).forEach(([charId, records]) => {
+            const char = characters.find(c => c.id === charId);
+            if (!char) return;
+            
+            const role = char.role;
+            if (!stats.byRole[role]) {
+                stats.byRole[role] = { tasks: 0, time: 0 };
+            }
+            
+            records.forEach((record, index) => {
+                if (record.time >= todayMs) {
+                    stats.statusChanges++;
+                    
+                    // 统计任务完成
+                    if (index > 0 && record.task !== records[index-1].task) {
+                        stats.totalTasks++;
+                        stats.byRole[role].tasks++;
+                    }
+                }
+            });
+        });
+        
+        return stats;
+    }
+};
+
+// 修改simulateOpenClawStatus来记录状态变化
+function recordStatusChanges() {
+    characters.forEach(char => {
+        StatusTimelineChart.recordStatus(
+            char.id,
+            char.status,
+            char.task,
+            char.progress
+        );
+    });
+}
+
+// 在游戏循环中调用状态记录
+const originalGameLoop = gameLoop;
+gameLoop = function() {
+    updateCharacterPositions();
+    // 每60帧记录一次状态变化（约1秒）
+    if (animationFrame % 60 === 0) {
+        recordStatusChanges();
+    }
+    originalGameLoop();
+};
 
 // ==================== 启动 ====================
 
@@ -1071,11 +1259,15 @@ function toggleSound() {
     if (AudioSystem.enabled) AudioSystem.playClick();
 }
 
-// 游戏循环增强
-const originalGameLoop = gameLoop;
-gameLoop = function() {
-    updateCharacterPositions();
-    originalGameLoop();
-};
+// 切换热力图显示
+function toggleHeatmap() {
+    const enabled = ZoneStats.toggleHeatmap();
+    AudioSystem.playClick();
+    console.log(`🗺️ 热力图: ${enabled ? '开启' : '关闭'}`);
+}
+
+// 快捷键绑定
+KEYBOARD_SHORTCUTS['h'] = toggleHeatmap;
+KEYBOARD_SHORTCUTS['H'] = toggleHeatmap;
 
 window.onload = init;
