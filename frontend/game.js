@@ -115,8 +115,8 @@ let useRealTimeData = true; // 默认开启实时数据
 const API_CONFIG = {
     // 本地API端点
     localEndpoint: '/api/status',
-    // 静态JSON fallback
-    staticEndpoint: '/api/status.json',
+    // 静态JSON fallback (放在根目录避免SPA路由问题)
+    staticEndpoint: '/static-data.json',
     // 模拟数据间隔
     simulationInterval: 5000,
     // 重试次数
