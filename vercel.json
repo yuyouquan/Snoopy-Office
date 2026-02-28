@@ -1,11 +1,5 @@
 {
-  "buildCommand": "echo 'Static site with API'",
+  "buildCommand": "echo 'Build complete'",
   "outputDirectory": ".",
-  "framework": null,
-  "routes": [
-    { "src": "/api/status", "dest": "/api/status.js" },
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ]
+  "framework": null
 }
