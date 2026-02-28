@@ -616,11 +616,27 @@ async function fetchOpenClawStatus() {
     }
 }
 
+// 实时状态连接指示
+function updateConnectionStatus(connected) {
+    const connEl = document.getElementById('connection');
+    if (connected) {
+        connEl.textContent = '🟢 已连接';
+        connEl.classList.remove('disconnected');
+    } else {
+        connEl.textContent = '🔴 模拟模式';
+        connEl.classList.add('disconnected');
+    }
+}
+
+// 初始化连接状态
+updateConnectionStatus(false);
+
 // 定时获取状态（每5秒）
 setInterval(async () => {
     const status = await fetchOpenClawStatus();
     if (status) {
         updateCharactersFromStatus(status);
+        updateConnectionStatus(false); // 显示模拟模式
     }
 }, 5000);
 
