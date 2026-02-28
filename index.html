@@ -19,6 +19,22 @@
         <main>
             <canvas id="office" width="800" height="600"></canvas>
             
+            <!-- 统计面板 -->
+            <div class="stats-panel">
+                <div class="stat-row">
+                    <span class="stat-label">工作中:</span>
+                    <span class="stat-value" id="stat-working">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">待命中:</span>
+                    <span class="stat-value" id="stat-idle">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">总进度:</span>
+                    <span class="stat-value" id="stat-progress">0%</span>
+                </div>
+            </div>
+            
             <!-- 角色详情面板 -->
             <div id="character-panel" class="panel hidden">
                 <div class="panel-header">

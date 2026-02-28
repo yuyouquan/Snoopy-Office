@@ -81,6 +81,9 @@ function init() {
     // 模拟状态变化
     simulateStatusChanges();
     
+    // 初始统计更新
+    updateStats();
+    
     console.log('🎮 Snoopy-Office 已启动');
 }
 
@@ -202,8 +205,11 @@ function drawPixelCharacter(x, y, char) {
     ctx.fillStyle = COLORS.peach;
     ctx.fillRect(x - 8, y - 18, 16, 14);
     
-    // 眼睛
+    // 眼睛 - 工作时闪烁
     ctx.fillStyle = COLORS.black;
+    if (char.status === 'working' && Math.floor(animationFrame / 30) % 2 === 0) {
+        ctx.fillStyle = COLORS.green; // 工作时眼睛发绿光
+    }
     ctx.fillRect(x - 5, y - 14, 3, 3);
     ctx.fillRect(x + 2, y - 14, 3, 3);
     
@@ -215,9 +221,9 @@ function drawPixelCharacter(x, y, char) {
             ctx.fillRect(x - 2, y - 5, 4, 8);
             break;
         case '主助手':
-            // 天线
+            // 天线 - 工作时闪烁
             ctx.fillRect(x - 1, y - 24, 2, 6);
-            ctx.fillStyle = COLORS.green;
+            ctx.fillStyle = (char.status === 'working' && Math.floor(animationFrame / 20) % 2 === 0) ? COLORS.yellow : COLORS.green;
             ctx.fillRect(x - 2, y - 25, 4, 2);
             break;
         case '开发':
@@ -232,11 +238,15 @@ function drawPixelCharacter(x, y, char) {
             break;
     }
     
-    // 状态指示器
+    // 状态指示器 - 优化动画
     const statusColor = char.status === 'working' ? COLORS.green : COLORS.orange;
-    ctx.fillStyle = statusColor;
-    ctx.fillRect(x - 12, y - 22, 4, 4);
-    ctx.fillRect(x + 8, y - 22, 4, 4);
+    const blinkOn = Math.floor(animationFrame / (char.status === 'working' ? 15 : 40)) % 2 === 0;
+    
+    if (blinkOn) {
+        ctx.fillStyle = statusColor;
+        ctx.fillRect(x - 12, y - 22, 4, 4);
+        ctx.fillRect(x + 8, y - 22, 4, 4);
+    }
 }
 
 function drawTaskBubble(x, y, char) {
@@ -338,6 +348,19 @@ function updateTime() {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     document.getElementById('time').textContent = `🕐 ${hours}:${minutes}`;
+    
+    // 更新统计面板
+    updateStats();
+}
+
+function updateStats() {
+    const working = characters.filter(c => c.status === 'working').length;
+    const idle = characters.filter(c => c.status !== 'working').length;
+    const avgProgress = Math.round(characters.reduce((sum, c) => sum + c.progress, 0) / characters.length);
+    
+    document.getElementById('stat-working').textContent = working;
+    document.getElementById('stat-idle').textContent = idle;
+    document.getElementById('stat-progress').textContent = avgProgress + '%';
 }
 
 // ==================== 模拟状态变化 ====================
@@ -372,6 +395,50 @@ function simulateStatusChanges() {
             showCharacterPanel(char);
         }
     }, 5000);
+}
+
+// ==================== 状态获取（模拟OpenClaw API） ====================
+
+// 模拟从OpenClaw获取状态
+async function fetchOpenClawStatus() {
+    try {
+        // 实际项目中替换为真实API调用
+        // const response = await fetch('/api/status');
+        // return await response.json();
+        
+        // 模拟返回数据
+        return {
+            timestamp: Date.now(),
+            roles: characters.map(c => ({
+                id: c.id,
+                task: c.task,
+                progress: c.progress,
+                status: c.status
+            }))
+        };
+    } catch (error) {
+        console.error('获取状态失败:', error);
+        return null;
+    }
+}
+
+// 定时获取状态（每5秒）
+setInterval(async () => {
+    const status = await fetchOpenClawStatus();
+    if (status) {
+        updateCharactersFromStatus(status);
+    }
+}, 5000);
+
+function updateCharactersFromStatus(status) {
+    status.roles.forEach(roleData => {
+        const char = characters.find(c => c.id === roleData.id);
+        if (char) {
+            char.task = roleData.task;
+            char.progress = roleData.progress;
+            char.status = roleData.status;
+        }
+    });
 }
 
 // ==================== 启动 ====================

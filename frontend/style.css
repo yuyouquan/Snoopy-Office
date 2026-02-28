@@ -178,6 +178,59 @@ footer {
 }
 
 /* 像素字体效果 */
+.stats-panel {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    padding: 10px 15px;
+    background: rgba(45, 45, 53, 0.9);
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.stats-panel .stat-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 4px;
+}
+
+.stats-panel .stat-row:last-child {
+    margin-bottom: 0;
+}
+
+.stats-panel .stat-label {
+    color: var(--text-secondary);
+}
+
+.stats-panel .stat-value {
+    color: var(--accent);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .panel {
+        width: calc(100% - 20px);
+        right: 10px;
+        left: 10px;
+    }
+    
+    #office {
+        width: 100%;
+        height: auto;
+    }
+    
+    .legend {
+        font-size: 0.7rem;
+    }
+}
+
 @media (min-width: 768px) {
     body {
         font-size: 14px;
