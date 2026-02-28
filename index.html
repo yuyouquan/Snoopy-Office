@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snoopy-Office 像素办公室</title>
+    <link rel="stylesheet" href="frontend/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏢 Snoopy-Office 像素办公室</h1>
+            <div class="status-bar">
+                <span id="time">🕐 --:--</span>
+                <span id="connection">🟢 已连接</span>
+            </div>
+        </header>
+        
+        <main>
+            <canvas id="office" width="800" height="600"></canvas>
+            
+            <!-- 角色详情面板 -->
+            <div id="character-panel" class="panel hidden">
+                <div class="panel-header">
+                    <h2 id="panel-name">角色名称</h2>
+                    <button class="close-btn" onclick="closePanel()">×</button>
+                </div>
+                <div class="panel-content">
+                    <div class="info-row">
+                        <span class="label">当前状态:</span>
+                        <span id="panel-status" class="value">--</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">任务进度:</span>
+                        <div class="progress-bar">
+                            <div id="panel-progress" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">当前位置:</span>
+                        <span id="panel-location" class="value">--</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">任务描述:</span>
+                        <p id="panel-task">--</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <div class="legend">
+                <span>👔 老板</span>
+                <span>🤖 AI助手</span>
+                <span>📋 产品经理</span>
+                <span>💻 开发</span>
+                <span>🧪 测试</span>
+            </div>
+        </footer>
+    </div>
+    
+    <script src="frontend/game.js"></script>
+</body>
+</html>

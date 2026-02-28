@@ -1,0 +1,185 @@
+/* Snoopy-Office 像素风格样式 */
+
+:root {
+    --bg-dark: #1d1d21;
+    --bg-panel: #2d2d35;
+    --text-primary: #fff1e8;
+    --text-secondary: #83769c;
+    --accent: #00e436;
+    --accent-orange: #ff77a8;
+    --accent-blue: #29adff;
+    --border: #3d3d4a;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    max-width: 900px;
+    width: 100%;
+    padding: 20px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    background: var(--bg-panel);
+    border: 2px solid var(--border);
+    border-radius: 4px;
+}
+
+h1 {
+    font-size: 1.5rem;
+    text-shadow: 2px 2px 0 #000;
+}
+
+.status-bar {
+    display: flex;
+    gap: 20px;
+    font-size: 0.9rem;
+}
+
+#connection {
+    color: var(--accent);
+}
+
+#connection.disconnected {
+    color: #ff004d;
+}
+
+main {
+    position: relative;
+    background: var(--bg-panel);
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#office {
+    display: block;
+    background: #000;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+/* 角色详情面板 */
+.panel {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 280px;
+    background: var(--bg-panel);
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+}
+
+.panel.hidden {
+    display: none;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: var(--border);
+    border-bottom: 2px solid var(--bg-dark);
+}
+
+.panel-header h2 {
+    font-size: 1rem;
+    color: var(--accent-blue);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close-btn:hover {
+    color: var(--accent-orange);
+}
+
+.panel-content {
+    padding: 15px;
+}
+
+.info-row {
+    margin-bottom: 12px;
+}
+
+.info-row .label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.info-row .value {
+    font-size: 0.9rem;
+    color: var(--accent);
+}
+
+.progress-bar {
+    height: 12px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.3s ease;
+}
+
+#panel-task {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--text-primary);
+}
+
+footer {
+    margin-top: 15px;
+    padding: 12px 20px;
+    background: var(--bg-panel);
+    border: 2px solid var(--border);
+    border-radius: 4px;
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-size: 0.8rem;
+    justify-content: center;
+}
+
+/* 像素字体效果 */
+@media (min-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+}
