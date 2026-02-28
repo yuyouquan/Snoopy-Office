@@ -345,6 +345,13 @@ function simulateOpenClawStatus() {
             // 增加每日完成任务计数
             dailyCompleted++;
             
+            // 触发烟花庆祝
+            const pos = getZoneCenter(char.zone);
+            FireworkSystem.celebrate(pos.x, pos.y - 30);
+            
+            // 记录区域访问
+            ZoneStats.recordVisit(char.zone);
+            
             // 30%概率更换区域
             if (Math.random() < 0.3) {
                 const zoneKeys = Object.keys(ZONES);
@@ -490,11 +497,15 @@ function render() {
     ctx.fillStyle = COLORS.black;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // 绘制区域
+    // 绘制区域（带热力图效果）
     drawZones();
     
     // 绘制角色
     drawCharacters();
+    
+    // 绘制烟花
+    FireworkSystem.update();
+    FireworkSystem.draw(ctx);
     
     // 绘制选中高亮
     if (selectedCharacter) {
@@ -847,6 +858,8 @@ function updateStats() {
     if (today !== lastDate) {
         dailyCompleted = 0;
         lastDate = today;
+        // 重置区域统计
+        ZoneStats.init();
     }
     
     const working = characters.filter(c => c.status === 'working').length;
@@ -858,6 +871,13 @@ function updateStats() {
     document.getElementById('stat-progress').textContent = avgProgress + '%';
     document.getElementById('stat-speed').textContent = gameSpeed.toFixed(1) + 'x';
     document.getElementById('stat-completed').textContent = dailyCompleted;
+    
+    // 更新热门区域显示
+    const topZones = ZoneStats.getMostVisited();
+    if (topZones.length > 0 && topZones[0][1] > 0) {
+        const zoneNames = topZones.map(([key, count]) => ZONES[key]?.name || key).slice(0, 2);
+        document.getElementById('stat-top-zones').textContent = zoneNames.join(' > ') || '--';
+    }
 }
 
 // ==================== 增强功能：平滑移动 ====================
@@ -945,6 +965,93 @@ function importState(file) {
     };
     reader.readAsText(file);
 }
+
+// ==================== 烟花庆祝系统 ====================
+const FireworkSystem = {
+    particles: [],
+    
+    // 创建烟花
+    create(x, y) {
+        const colors = [COLORS.red, COLORS.orange, COLORS.yellow, COLORS.green, COLORS.blue, COLORS.pink, COLORS.purple];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        
+        // 创建多个粒子
+        for (let i = 0; i < 20; i++) {
+            const angle = (Math.PI * 2 * i) / 20 + Math.random() * 0.5;
+            const speed = 2 + Math.random() * 3;
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                color: color,
+                life: 60 + Math.random() * 30,
+                size: 3 + Math.random() * 3
+            });
+        }
+    },
+    
+    // 更新粒子
+    update() {
+        this.particles = this.particles.filter(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.1; // 重力
+            p.life--;
+            p.size *= 0.98;
+            return p.life > 0 && p.size > 0.5;
+        });
+    },
+    
+    // 绘制粒子
+    draw(ctx) {
+        this.particles.forEach(p => {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+        });
+    },
+    
+    // 触发庆祝（任务完成时调用）
+    celebrate(x, y) {
+        this.create(x, y);
+        // 再创建几个小的
+        setTimeout(() => this.create(x - 30, y - 20), 100);
+        setTimeout(() => this.create(x + 30, y - 10), 200);
+    }
+};
+
+// ==================== 区域访问统计 ====================
+const ZoneStats = {
+    visits: {}, // { zoneKey: count }
+    
+    init() {
+        Object.keys(ZONES).forEach(key => {
+            this.visits[key] = 0;
+        });
+    },
+    
+    recordVisit(zoneKey) {
+        if (this.visits[zoneKey] !== undefined) {
+            this.visits[zoneKey]++;
+        }
+    },
+    
+    getMostVisited() {
+        return Object.entries(this.visits)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+    },
+    
+    getZoneColor(zoneKey) {
+        const maxVisits = Math.max(...Object.values(this.visits), 1);
+        const visits = this.visits[zoneKey] || 0;
+        const intensity = visits / maxVisits;
+        return `rgba(255, 255, 255, ${0.1 + intensity * 0.3})`;
+    }
+};
+
+// 初始化区域统计
+ZoneStats.init();
 
 // ==================== 启动 ====================
 
