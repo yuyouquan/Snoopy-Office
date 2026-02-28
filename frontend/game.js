@@ -324,7 +324,13 @@ function simulateOpenClawStatus() {
     characters.forEach(char => {
         // 增加进度
         if (char.status === 'working') {
+            const oldProgress = char.progress;
             char.progress = Math.min(100, char.progress + Math.floor(Math.random() * 5 * gameSpeed));
+            
+            // 检查进度里程碑并通知
+            if (oldProgress < 50 && char.progress >= 50) {
+                TaskNotification.add(char, char.task, 50);
+            }
         }
         
         // 进度满时切换任务
@@ -344,6 +350,9 @@ function simulateOpenClawStatus() {
             
             // 增加每日完成任务计数
             dailyCompleted++;
+            
+            // 触发任务通知
+            TaskNotification.add(char, char.task, 100);
             
             // 触发烟花庆祝
             const pos = getZoneCenter(char.zone);
@@ -453,6 +462,80 @@ function init() {
     console.log('⌨️ 快捷键: 1-8 选择角色, ESC 关闭, +/- 调整速度, R 切换实时数据');
 }
 
+// ==================== 任务通知系统 ====================
+const TaskNotification = {
+    notifications: [],
+    maxNotifications: 5,
+    
+    add(char, task, progress) {
+        if (progress >= 100 && char.progress < 100) {
+            // 任务完成通知
+            this.notifications.push({
+                charName: char.name,
+                task: task,
+                type: 'complete',
+                timestamp: Date.now(),
+                duration: 5000
+            });
+            AudioSystem.playTaskComplete();
+            
+            // 触发全屏庆祝
+            if (gameCanvas) {
+                gameCanvas.triggerCelebration(`${char.name} 完成任务: ${task}`);
+            }
+        } else if (progress >= 50 && char.progress < 50) {
+            // 任务进行中通知
+            this.notifications.push({
+                charName: char.name,
+                task: task,
+                type: 'progress',
+                timestamp: Date.now(),
+                duration: 3000
+            });
+        }
+        
+        // 限制通知数量
+        if (this.notifications.length > this.maxNotifications) {
+            this.notifications.shift();
+        }
+    },
+    
+    update() {
+        const now = Date.now();
+        this.notifications = this.notifications.filter(n => 
+            now - n.timestamp < n.duration
+        );
+    },
+    
+    draw(ctx) {
+        const x = ctx.canvas.width - 200;
+        let y = 60;
+        
+        this.notifications.forEach((n, i) => {
+            const alpha = Math.min(1, (n.duration - (Date.now() - n.timestamp)) / 1000);
+            const bgColor = n.type === 'complete' ? 
+                `rgba(0, 228, 54, ${alpha * 0.9})` : 
+                `rgba(255, 163, 0, ${alpha * 0.9})`;
+            
+            ctx.fillStyle = bgColor;
+            ctx.strokeStyle = n.type === 'complete' ? COLORS.green : COLORS.orange;
+            ctx.lineWidth = 2;
+            
+            const text = n.type === 'complete' ? '✅' : '📈';
+            roundRect(ctx, x - 10, y - 12, 190, 28, 6);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+            ctx.font = 'bold 11px "Courier New"';
+            ctx.textAlign = 'left';
+            ctx.fillText(`${text} ${n.charName}`, x, y + 4);
+            
+            y += 35;
+        });
+    }
+};
+
 // ==================== 游戏循环 ====================
 
 function gameLoop() {
@@ -460,6 +543,9 @@ function gameLoop() {
     
     update();
     render();
+    
+    // 更新通知
+    TaskNotification.update();
     
     animationFrame++;
     requestAnimationFrame(gameLoop);
@@ -514,6 +600,9 @@ function render() {
     if (selectedCharacter) {
         drawSelectionHighlight();
     }
+    
+    // 绘制任务通知
+    TaskNotification.draw(ctx);
 }
 
 function drawZones() {
