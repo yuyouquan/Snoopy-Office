@@ -198,14 +198,21 @@ async function fetchRealTimeStatus() {
             headers: { 'Content-Type': 'application/json' }
         });
         
-        if (response.ok) {
-            const data = await response.json();
-            updateCharactersFromStatus(data);
-            updateConnectionStatus(true, '🔗 已连接实时数据');
+        // 检查HTTP状态和Content-Type
+        if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+            console.log('API返回非JSON响应，使用模拟数据');
+            updateConnectionStatus(false);
+            simulateOpenClawStatus();
             return;
         }
+        
+        const data = await response.json();
+        updateCharactersFromStatus(data);
+        updateConnectionStatus(true, '🔗 已连接实时数据');
+        return;
     } catch (error) {
-        console.log('本地API不可用，使用模拟数据');
+        console.log('本地API不可用，使用模拟数据:', error.message);
+        updateConnectionStatus(false);
     }
     
     // 降级到模拟数据
