@@ -7,6 +7,13 @@
     "start": "npx serve .",
     "deploy": "vercel --prod"
   },
+  "build": {
+    "dist": ".",
+    "assets": "frontend/**"
+  },
+  "vercel": {
+    "api": "api"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yuyouquan/Snoopy-Office.git"
