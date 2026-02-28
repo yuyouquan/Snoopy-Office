@@ -110,6 +110,8 @@ let animationFrame = 0;
 let isRunning = true;
 let gameSpeed = 1;
 let useRealTimeData = true; // 默认开启实时数据
+let dailyCompleted = 0; // 今日完成任务计数
+let lastDate = new Date().toDateString(); // 上次更新日期
 
 // 实时数据API配置
 const API_CONFIG = {
@@ -339,6 +341,9 @@ function simulateOpenClawStatus() {
             
             char.task = newTask;
             char.progress = 0;
+            
+            // 增加每日完成任务计数
+            dailyCompleted++;
             
             // 30%概率更换区域
             if (Math.random() < 0.3) {
@@ -837,6 +842,13 @@ function updateTime() {
 }
 
 function updateStats() {
+    // 检查日期是否变化（新的一天）
+    const today = new Date().toDateString();
+    if (today !== lastDate) {
+        dailyCompleted = 0;
+        lastDate = today;
+    }
+    
     const working = characters.filter(c => c.status === 'working').length;
     const idle = characters.filter(c => c.status !== 'working').length;
     const avgProgress = Math.round(characters.reduce((sum, c) => sum + c.progress, 0) / characters.length);
@@ -845,6 +857,7 @@ function updateStats() {
     document.getElementById('stat-idle').textContent = idle;
     document.getElementById('stat-progress').textContent = avgProgress + '%';
     document.getElementById('stat-speed').textContent = gameSpeed.toFixed(1) + 'x';
+    document.getElementById('stat-completed').textContent = dailyCompleted;
 }
 
 // ==================== 增强功能：平滑移动 ====================
