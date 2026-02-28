@@ -39,16 +39,18 @@ const ZONES = {
     server: { x: 300, y: 400, width: 150, height: 150, name: '服务器区', color: COLORS.darkGray }
 };
 
-// 角色定义
+// 角色定义 - 完整版（10个角色）
 const CHARACTERS = [
-    { id: 'boss', name: '老板', role: '用户', zone: 'boss', color: COLORS.brown, task: '下达指令', progress: 100, status: 'idle' },
-    { id: 'ai', name: 'AI助手', role: '主助手', zone: 'ai', color: COLORS.blue, task: '分配任务', progress: 100, status: 'working' },
-    { id: 'pm', name: '产品经理', role: '产品', zone: 'pm', color: COLORS.indigo, task: '整理需求文档', progress: 75, status: 'working' },
-    { id: 'fe', name: '前端开发', role: '开发', zone: 'dev', color: COLORS.green, task: '实现UI组件', progress: 45, status: 'working' },
-    { id: 'be', name: '后端开发', role: '开发', zone: 'dev', color: COLORS.yellow, task: '编写API接口', progress: 30, status: 'working' },
-    { id: 'qa', name: '测试工程师', role: '测试', zone: 'test', color: COLORS.blue, task: '执行测试用例', progress: 20, status: 'working' },
-    { id: 'security', name: '安全专家', role: '安全', zone: 'security', color: COLORS.red, task: '漏洞扫描', progress: 0, status: 'idle' },
-    { id: 'miner', name: '新闻矿工', role: '查询', zone: 'search', color: COLORS.orange, task: '搜索信息', progress: 60, status: 'working' }
+    { id: 'boss', name: '👔 老板', role: '用户', zone: 'boss', color: COLORS.brown, task: '下达指令', progress: 100, status: 'idle' },
+    { id: 'ai', name: '🤖 AI助手', role: '主助手', zone: 'ai', color: COLORS.blue, task: '分配任务', progress: 100, status: 'working' },
+    { id: 'pm', name: '📋 产品经理', role: '产品', zone: 'pm', color: COLORS.indigo, task: '整理需求文档', progress: 75, status: 'working' },
+    { id: 'pm_manager', name: '📊 项目经理', role: '产品', zone: 'meeting', color: COLORS.pink, task: '协调进度', progress: 50, status: 'working' },
+    { id: 'fe', name: '💻 前端开发', role: '开发', zone: 'dev', color: COLORS.green, task: '实现UI组件', progress: 45, status: 'working' },
+    { id: 'be', name: '⚙️ 后端开发', role: '开发', zone: 'dev', color: COLORS.yellow, task: '编写API接口', progress: 30, status: 'working' },
+    { id: 'qa', name: '🧪 测试工程师', role: '测试', zone: 'test', color: COLORS.blue, task: '执行测试用例', progress: 20, status: 'working' },
+    { id: 'security', name: '🔒 安全专家', role: '安全', zone: 'security', color: COLORS.red, task: '漏洞扫描', progress: 0, status: 'idle' },
+    { id: 'miner', name: '🔍 新闻矿工', role: '查询', zone: 'search', color: COLORS.orange, task: '搜索信息', progress: 60, status: 'working' },
+    { id: 'writer', name: '✍️ 小说家', role: '创作', zone: 'break', color: COLORS.pink, task: '创作中', progress: 80, status: 'working' }
 ];
 
 // ==================== 游戏状态 ====================
@@ -58,6 +60,49 @@ let characters = JSON.parse(JSON.stringify(CHARACTERS));
 let selectedCharacter = null;
 let animationFrame = 0;
 let isRunning = true;
+let gameSpeed = 1; // 动画速度控制
+
+// 键盘快捷键
+const KEYBOARD_SHORTCUTS = {
+    '1': 'boss',
+    '2': 'ai',
+    '3': 'pm',
+    '4': 'fe',
+    '5': 'be',
+    '6': 'qa',
+    '7': 'security',
+    '8': 'miner',
+    'Escape': null, // 关闭面板
+    'ArrowUp': () => moveSelection(-1),
+    'ArrowDown': () => moveSelection(1),
+    '+': () => { gameSpeed = Math.min(3, gameSpeed + 0.5); },
+    '-': () => { gameSpeed = Math.max(0.5, gameSpeed - 0.5); }
+};
+
+function moveSelection(direction) {
+    const currentIndex = selectedCharacter 
+        ? characters.findIndex(c => c.id === selectedCharacter)
+        : -1;
+    const newIndex = (currentIndex + direction + characters.length) % characters.length;
+    selectedCharacter = characters[newIndex].id;
+    showCharacterPanel(characters[newIndex]);
+}
+
+function handleKeyboard(e) {
+    if (KEYBOARD_SHORTCUTS[e.key]) {
+        const charId = KEYBOARD_SHORTCUTS[e.key];
+        if (charId === null) {
+            selectedCharacter = null;
+            closePanel();
+        } else if (typeof charId === 'string') {
+            selectedCharacter = charId;
+            const char = characters.find(c => c.id === charId);
+            if (char) showCharacterPanel(char);
+        } else if (typeof charId === 'function') {
+            charId();
+        }
+    }
+}
 
 // ==================== 初始化 ====================
 
@@ -70,6 +115,16 @@ function init() {
     
     // 绑定点击事件
     canvas.addEventListener('click', handleClick);
+    
+    // 绑定键盘事件
+    document.addEventListener('keydown', handleKeyboard);
+    
+    // 移动端触摸支持
+    canvas.addEventListener('touchstart', handleTouch, { passive: false });
+    
+    // 响应式画布
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
     
     // 启动游戏循环
     gameLoop();
@@ -85,6 +140,7 @@ function init() {
     updateStats();
     
     console.log('🎮 Snoopy-Office 已启动');
+    console.log('⌨️ 快捷键: 1-8 选择角色, ESC 关闭, +/- 调整速度');
 }
 
 // ==================== 游戏循环 ====================
@@ -325,6 +381,41 @@ function closePanel() {
     document.getElementById('character-panel').classList.add('hidden');
 }
 
+// 响应式画布适配
+function resizeCanvas() {
+    const container = canvas.parentElement;
+    const maxWidth = container.clientWidth - 40;
+    const scale = Math.min(maxWidth / 800, 1);
+    canvas.style.width = (800 * scale) + 'px';
+    canvas.style.height = (600 * scale) + 'px';
+}
+
+// 触摸事件处理
+function handleTouch(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (touch.clientX - rect.left) * scaleX;
+    const y = (touch.clientY - rect.top) * scaleY;
+    
+    const clickedChar = characters.find(char => {
+        const pos = getCharacterPosition(char);
+        const charX = pos.x || getZoneCenter(char.zone).x;
+        const charY = pos.y || getZoneCenter(char.zone).y;
+        return Math.abs(x - charX) < 25 && Math.abs(y - charY) < 30;
+    });
+    
+    if (clickedChar) {
+        selectedCharacter = clickedChar.id;
+        showCharacterPanel(clickedChar);
+    } else {
+        selectedCharacter = null;
+        closePanel();
+    }
+}
+
 // ==================== 工具函数 ====================
 
 function getZoneCenter(zoneKey) {
@@ -361,6 +452,7 @@ function updateStats() {
     document.getElementById('stat-working').textContent = working;
     document.getElementById('stat-idle').textContent = idle;
     document.getElementById('stat-progress').textContent = avgProgress + '%';
+    document.getElementById('stat-speed').textContent = gameSpeed.toFixed(1) + 'x';
 }
 
 // ==================== 模拟状态变化 ====================
@@ -378,15 +470,26 @@ function simulateStatusChanges() {
         if (char.progress >= 100) {
             const tasks = {
                 'pm': ['整理需求文档', '撰写PRD', '用户访谈', '竞品分析'],
+                '产品': ['整理需求文档', '撰写PRD', '用户访谈', '竞品分析'],
                 'fe': ['实现UI组件', '修复样式bug', '优化性能', '编写文档'],
+                '开发': ['实现UI组件', '修复样式bug', '优化性能', '编写文档'],
                 'be': ['编写API接口', '数据库优化', '写单元测试', 'Code Review'],
                 'qa': ['执行测试用例', '编写测试报告', '回归测试', 'Bug验证'],
+                '测试': ['执行测试用例', '编写测试报告', '回归测试', 'Bug验证'],
                 'security': ['漏洞扫描', '安全审计', '渗透测试', '安全培训'],
+                '安全': ['漏洞扫描', '安全审计', '渗透测试', '安全培训'],
                 'miner': ['搜索信息', '整理新闻', '数据分析', '报告撰写'],
+                '查询': ['搜索信息', '整理新闻', '数据分析', '报告撰写'],
                 'ai': ['分配任务', '协调进度', '审核代码', '回复用户'],
-                'boss': ['下达指令', '开会', '审批文件', '战略规划']
+                '主助手': ['分配任务', '协调进度', '审核代码', '回复用户'],
+                'boss': ['下达指令', '开会', '审批文件', '战略规划'],
+                '用户': ['下达指令', '开会', '审批文件', '战略规划'],
+                '创作': ['创作中', '构思情节', '修改稿子', '发布章节'],
+                '产品经理': ['整理需求文档', '撰写PRD', '用户访谈', '竞品分析'],
+                '项目经理': ['协调进度', '更新看板', '会议组织', '风险管理']
             };
-            char.task = tasks[char.role]?.[Math.floor(Math.random() * tasks[char.role].length)] || '工作中';
+            const taskList = tasks[char.role] || tasks[char.name] || ['工作中'];
+            char.task = taskList[Math.floor(Math.random() * taskList.length)];
             char.progress = 0;
         }
         

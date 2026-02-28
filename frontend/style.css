@@ -177,6 +177,13 @@ footer {
     justify-content: center;
 }
 
+.shortcuts {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
 /* 像素字体效果 */
 .stats-panel {
     position: absolute;
