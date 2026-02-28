@@ -1,5 +1,8 @@
 {
   "buildCommand": "echo 'Build complete'",
   "outputDirectory": ".",
-  "framework": null
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/status", "destination": "/api/status.js" }
+  ]
 }

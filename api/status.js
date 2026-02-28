@@ -3,7 +3,7 @@
  * 提供实时角色状态数据
  */
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // 设置CORS头
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -76,4 +76,4 @@ export default async function handler(req, res) {
     };
 
     res.status(200).json(response);
-}
+};
