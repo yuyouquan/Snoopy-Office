@@ -3,6 +3,54 @@
  * Phase 1 MVP - 核心功能实现
  */
 
+// ==================== 音效系统 ====================
+const AudioSystem = {
+    context: null,
+    enabled: true,
+    
+    init() {
+        try {
+            this.context = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            console.warn('Web Audio API not supported');
+            this.enabled = false;
+        }
+    },
+    
+    playTone(frequency, duration, type = 'square') {
+        if (!this.enabled || !this.context) return;
+        
+        const oscillator = this.context.createOscillator();
+        const gainNode = this.context.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.context.destination);
+        
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, this.context.currentTime);
+        
+        gainNode.gain.setValueAtTime(0.1, this.context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.context.currentTime + duration);
+        
+        oscillator.start(this.context.currentTime);
+        oscillator.stop(this.context.currentTime + duration);
+    },
+    
+    playClick() { this.playTone(800, 0.05); },
+    playSelect() { this.playTone(600, 0.08); },
+    playTaskComplete() { 
+        this.playTone(523, 0.1);
+        setTimeout(() => this.playTone(659, 0.1), 100);
+        setTimeout(() => this.playTone(784, 0.15), 200);
+    },
+    playError() { this.playTone(200, 0.2, 'sawtooth'); }
+};
+
+// 初始化音效（需要用户交互后）
+document.addEventListener('click', () => {
+    if (!AudioSystem.context) AudioSystem.init();
+}, { once: true });
+
 // ==================== 常量定义 ====================
 
 // PICO-8 调色板
@@ -359,6 +407,7 @@ function handleClick(e) {
     
     if (clickedChar) {
         selectedCharacter = clickedChar.id;
+        AudioSystem.playSelect();
         showCharacterPanel(clickedChar);
     } else {
         selectedCharacter = null;
@@ -521,6 +570,18 @@ function simulateStatusChanges() {
             
             char.task = newTask;
             char.progress = 0;
+            
+            // 任务完成音效
+            AudioSystem.playTaskComplete();
+            
+            // 30%概率更换区域（模拟角色移动）
+            if (Math.random() < 0.3) {
+                const zoneKeys = Object.keys(ZONES);
+                const currentZoneIndex = zoneKeys.indexOf(char.zone);
+                // 移动到相邻区域
+                const newZoneIndex = (currentZoneIndex + Math.floor(Math.random() * 3) + 1) % zoneKeys.length;
+                char.zone = zoneKeys[newZoneIndex];
+            }
         }
         
         // 更新面板（如果当前选中）
@@ -575,5 +636,14 @@ function updateCharactersFromStatus(status) {
 }
 
 // ==================== 启动 ====================
+
+function toggleSound() {
+    AudioSystem.enabled = !AudioSystem.enabled;
+    const btn = document.getElementById('sound-toggle');
+    btn.textContent = AudioSystem.enabled ? '🔊' : '🔇';
+    if (AudioSystem.enabled) {
+        AudioSystem.playClick();
+    }
+}
 
 window.onload = init;

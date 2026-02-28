@@ -51,8 +51,22 @@ h1 {
 
 .status-bar {
     display: flex;
-    gap: 20px;
+    gap: 15px;
+    align-items: center;
     font-size: 0.9rem;
+}
+
+.sound-btn {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.sound-btn:hover {
+    border-color: var(--accent);
 }
 
 #connection {
