@@ -214,6 +214,55 @@ footer {
     color: var(--accent);
 }
 
+/* 任务时间轴 */
+.timeline {
+    max-height: 120px;
+    overflow-y: auto;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 8px;
+}
+
+.timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 0.7rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.timeline-item:last-child {
+    border-bottom: none;
+}
+
+.timeline-time {
+    color: var(--text-secondary);
+    min-width: 45px;
+}
+
+.timeline-task {
+    color: var(--text-primary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.timeline-status {
+    min-width: 30px;
+    text-align: right;
+}
+
+.timeline-status.done {
+    color: var(--accent);
+}
+
+.timeline-status.progress {
+    color: var(--accent-orange);
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     header {

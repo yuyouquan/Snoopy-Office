@@ -41,16 +41,16 @@ const ZONES = {
 
 // 角色定义 - 完整版（10个角色）
 const CHARACTERS = [
-    { id: 'boss', name: '👔 老板', role: '用户', zone: 'boss', color: COLORS.brown, task: '下达指令', progress: 100, status: 'idle' },
-    { id: 'ai', name: '🤖 AI助手', role: '主助手', zone: 'ai', color: COLORS.blue, task: '分配任务', progress: 100, status: 'working' },
-    { id: 'pm', name: '📋 产品经理', role: '产品', zone: 'pm', color: COLORS.indigo, task: '整理需求文档', progress: 75, status: 'working' },
-    { id: 'pm_manager', name: '📊 项目经理', role: '产品', zone: 'meeting', color: COLORS.pink, task: '协调进度', progress: 50, status: 'working' },
-    { id: 'fe', name: '💻 前端开发', role: '开发', zone: 'dev', color: COLORS.green, task: '实现UI组件', progress: 45, status: 'working' },
-    { id: 'be', name: '⚙️ 后端开发', role: '开发', zone: 'dev', color: COLORS.yellow, task: '编写API接口', progress: 30, status: 'working' },
-    { id: 'qa', name: '🧪 测试工程师', role: '测试', zone: 'test', color: COLORS.blue, task: '执行测试用例', progress: 20, status: 'working' },
-    { id: 'security', name: '🔒 安全专家', role: '安全', zone: 'security', color: COLORS.red, task: '漏洞扫描', progress: 0, status: 'idle' },
-    { id: 'miner', name: '🔍 新闻矿工', role: '查询', zone: 'search', color: COLORS.orange, task: '搜索信息', progress: 60, status: 'working' },
-    { id: 'writer', name: '✍️ 小说家', role: '创作', zone: 'break', color: COLORS.pink, task: '创作中', progress: 80, status: 'working' }
+    { id: 'boss', name: '👔 老板', role: '用户', zone: 'boss', color: COLORS.brown, task: '下达指令', progress: 100, status: 'idle', history: [] },
+    { id: 'ai', name: '🤖 AI助手', role: '主助手', zone: 'ai', color: COLORS.blue, task: '分配任务', progress: 100, status: 'working', history: [] },
+    { id: 'pm', name: '📋 产品经理', role: '产品', zone: 'pm', color: COLORS.indigo, task: '整理需求文档', progress: 75, status: 'working', history: [] },
+    { id: 'pm_manager', name: '📊 项目经理', role: '产品', zone: 'meeting', color: COLORS.pink, task: '协调进度', progress: 50, status: 'working', history: [] },
+    { id: 'fe', name: '💻 前端开发', role: '开发', zone: 'dev', color: COLORS.green, task: '实现UI组件', progress: 45, status: 'working', history: [] },
+    { id: 'be', name: '⚙️ 后端开发', role: '开发', zone: 'dev', color: COLORS.yellow, task: '编写API接口', progress: 30, status: 'working', history: [] },
+    { id: 'qa', name: '🧪 测试工程师', role: '测试', zone: 'test', color: COLORS.blue, task: '执行测试用例', progress: 20, status: 'working', history: [] },
+    { id: 'security', name: '🔒 安全专家', role: '安全', zone: 'security', color: COLORS.red, task: '漏洞扫描', progress: 0, status: 'idle', history: [] },
+    { id: 'miner', name: '🔍 新闻矿工', role: '查询', zone: 'search', color: COLORS.orange, task: '搜索信息', progress: 60, status: 'working', history: [] },
+    { id: 'writer', name: '✍️ 小说家', role: '创作', zone: 'break', color: COLORS.pink, task: '创作中', progress: 80, status: 'working', history: [] }
 ];
 
 // ==================== 游戏状态 ====================
@@ -375,6 +375,20 @@ function showCharacterPanel(char) {
     document.getElementById('panel-progress').style.width = char.progress + '%';
     document.getElementById('panel-location').textContent = ZONES[char.zone]?.name || char.zone;
     document.getElementById('panel-task').textContent = char.task || '暂无任务';
+    
+    // 显示任务时间轴
+    const timelineEl = document.getElementById('panel-timeline');
+    if (char.history && char.history.length > 0) {
+        timelineEl.innerHTML = char.history.slice(-5).map(item => `
+            <div class="timeline-item">
+                <span class="timeline-time">${item.time}</span>
+                <span class="timeline-task">${item.task}</span>
+                <span class="timeline-status ${item.completed ? 'done' : 'progress'}">${item.completed ? '✓' : '...'}</span>
+            </div>
+        `).join('');
+    } else {
+        timelineEl.innerHTML = '<div class="timeline-item"><span class="timeline-task">暂无历史记录</span></div>';
+    }
 }
 
 function closePanel() {
@@ -489,7 +503,23 @@ function simulateStatusChanges() {
                 '项目经理': ['协调进度', '更新看板', '会议组织', '风险管理']
             };
             const taskList = tasks[char.role] || tasks[char.name] || ['工作中'];
-            char.task = taskList[Math.floor(Math.random() * taskList.length)];
+            const newTask = taskList[Math.floor(Math.random() * taskList.length)];
+            
+            // 记录任务完成到历史
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            char.history = char.history || [];
+            char.history.push({
+                time: timeStr,
+                task: char.task,
+                completed: true
+            });
+            // 保留最近10条记录
+            if (char.history.length > 10) {
+                char.history = char.history.slice(-10);
+            }
+            
+            char.task = newTask;
             char.progress = 0;
         }
         
