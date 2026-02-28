@@ -139,7 +139,8 @@ const KEYBOARD_SHORTCUTS = {
     '+': () => { gameSpeed = Math.min(3, gameSpeed + 0.5); },
     '-': () => { gameSpeed = Math.max(0.5, gameSpeed - 0.5); },
     'r': () => toggleRealTimeData(),
-    'R': () => toggleRealTimeData()
+    'R': () => toggleRealTimeData(),
+    ' ': () => refreshStatus()  // Space 刷新
 };
 
 function moveSelection(direction) {
@@ -933,6 +934,15 @@ function importState(file) {
 }
 
 // ==================== 启动 ====================
+
+// 手动刷新状态
+function refreshStatus() {
+    AudioSystem.playClick();
+    fetchRealTimeStatus().then(() => {
+        updateStats();
+        console.log('🔄 状态已刷新');
+    });
+}
 
 function toggleSound() {
     AudioSystem.enabled = !AudioSystem.enabled;
