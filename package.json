@@ -4,13 +4,18 @@
   "description": "像素风格AI助手状态可视化Web应用",
   "main": "index.js",
   "scripts": {
-    "start": "npx serve ."
+    "start": "npx serve .",
+    "deploy": "vercel --prod"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yuyouquan/Snoopy-Office.git"
   },
-  "keywords": ["pixel-art", "office", "ai-assistant"],
+  "keywords": [
+    "pixel-art",
+    "office",
+    "ai-assistant"
+  ],
   "author": "",
   "license": "MIT",
   "type": "commonjs"

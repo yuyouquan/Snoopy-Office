@@ -651,6 +651,154 @@ function updateCharactersFromStatus(status) {
     });
 }
 
+// ==================== 增强功能：角色平滑移动 ====================
+
+// 目标位置映射（用于平滑移动动画）
+let targetPositions = {};
+let currentPositions = {};
+
+function lerp(start, end, t) {
+    return start + (end - start) * t;
+}
+
+function updateCharacterPositions() {
+    characters.forEach(char => {
+        const target = getZoneCenter(char.zone);
+        const current = currentPositions[char.id] || target;
+        
+        // 平滑移动到目标位置
+        currentPositions[char.id] = {
+            x: lerp(current.x, target.x, 0.05),
+            y: lerp(current.y, target.y, 0.05)
+        };
+        
+        // 存储到角色对象
+        char.x = currentPositions[char.id].x;
+        char.y = currentPositions[char.id].y;
+    });
+}
+
+// ==================== 增强功能：任务气泡优化 ====================
+
+function drawTaskBubble(x, y, char) {
+    const task = char.task || '工作中';
+    const progress = char.progress || 0;
+    
+    // 气泡背景（带圆角矩形）
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = char.color;
+    ctx.lineWidth = 2;
+    
+    const bubbleWidth = Math.min(task.length * 8 + 20, 120);
+    const bubbleHeight = 24;
+    const bubbleX = x - bubbleWidth / 2;
+    const bubbleY = y - bubbleHeight / 2;
+    
+    // 绘制圆角矩形
+    roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 6);
+    ctx.fill();
+    ctx.stroke();
+    
+    // 气泡尖角
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.beginPath();
+    ctx.moveTo(x - 6, bubbleY + bubbleHeight);
+    ctx.lineTo(x, bubbleY + bubbleHeight + 6);
+    ctx.lineTo(x + 6, bubbleY + bubbleHeight);
+    ctx.fill();
+    
+    // 气泡尖角边框
+    ctx.strokeStyle = char.color;
+    ctx.beginPath();
+    ctx.moveTo(x - 6, bubbleY + bubbleHeight);
+    ctx.lineTo(x, bubbleY + bubbleHeight + 6);
+    ctx.lineTo(x + 6, bubbleY + bubbleHeight);
+    ctx.stroke();
+    
+    // 任务文字
+    ctx.fillStyle = COLORS.black;
+    ctx.font = '10px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.fillText(task.substring(0, 12), x, bubbleY + 15);
+    
+    // 进度条
+    const progressY = bubbleY + bubbleHeight + 10;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x - 25, progressY, 50, 4);
+    ctx.fillStyle = char.color;
+    ctx.fillRect(x - 25, progressY, 50 * (progress / 100), 4);
+    
+    ctx.textAlign = 'left';
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+}
+
+// ==================== 增强功能：全屏模式 ====================
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.log('全屏模式不支持');
+        });
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+// 键盘快捷键扩展
+KEYBOARD_SHORTCUTS['f'] = toggleFullscreen;
+KEYBOARD_SHORTCUTS['F'] = toggleFullscreen;
+
+// ==================== 增强功能：数据导出/导入 ====================
+
+function exportState() {
+    const state = {
+        timestamp: Date.now(),
+        characters: characters,
+        zones: ZONES
+    };
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `snoopy-office-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    AudioSystem.playClick();
+    console.log('📦 状态已导出');
+}
+
+function importState(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const state = JSON.parse(e.target.result);
+            if (state.characters) {
+                characters = state.characters;
+                updateStats();
+                AudioSystem.playSelect();
+                console.log('📥 状态已导入');
+            }
+        } catch (err) {
+            AudioSystem.playError();
+            console.error('导入失败:', err);
+        }
+    };
+    reader.readAsText(file);
+}
+
 // ==================== 启动 ====================
 
 function toggleSound() {
@@ -661,5 +809,12 @@ function toggleSound() {
         AudioSystem.playClick();
     }
 }
+
+// 修改游戏循环以支持平滑移动
+const originalGameLoop = gameLoop;
+gameLoop = function() {
+    updateCharacterPositions();
+    originalGameLoop();
+};
 
 window.onload = init;

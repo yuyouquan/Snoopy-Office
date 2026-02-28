@@ -14,6 +14,11 @@
                 <span id="time">🕐 --:--</span>
                 <span id="connection">🟢 已连接</span>
                 <button id="sound-toggle" class="sound-btn" onclick="toggleSound()">🔊</button>
+                <button class="sound-btn" onclick="toggleFullscreen()" title="全屏 (F)">🖥️</button>
+                <button class="sound-btn" onclick="exportState()" title="导出状态">📦</button>
+                <label class="sound-btn" title="导入状态">📥
+                    <input type="file" accept=".json" onchange="importState(this.files[0])" style="display:none">
+                </label>
             </div>
         </header>
         
