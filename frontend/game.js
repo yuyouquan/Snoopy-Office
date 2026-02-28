@@ -1,6 +1,6 @@
 /**
  * Snoopy-Office 像素办公室游戏引擎
- * Phase 1 MVP - 核心功能实现
+ * Phase 1 MVP + 实时数据集成
  */
 
 // ==================== 音效系统 ====================
@@ -108,7 +108,18 @@ let characters = JSON.parse(JSON.stringify(CHARACTERS));
 let selectedCharacter = null;
 let animationFrame = 0;
 let isRunning = true;
-let gameSpeed = 1; // 动画速度控制
+let gameSpeed = 1;
+let useRealTimeData = false; // 是否使用实时数据
+
+// 实时数据API配置
+const API_CONFIG = {
+    // 本地API端点（可在本地开发时使用）
+    localEndpoint: '/api/status',
+    // 模拟数据间隔
+    simulationInterval: 5000,
+    // 重试次数
+    maxRetries: 3
+};
 
 // 键盘快捷键
 const KEYBOARD_SHORTCUTS = {
@@ -120,11 +131,13 @@ const KEYBOARD_SHORTCUTS = {
     '6': 'qa',
     '7': 'security',
     '8': 'miner',
-    'Escape': null, // 关闭面板
+    'Escape': null,
     'ArrowUp': () => moveSelection(-1),
     'ArrowDown': () => moveSelection(1),
     '+': () => { gameSpeed = Math.min(3, gameSpeed + 0.5); },
-    '-': () => { gameSpeed = Math.max(0.5, gameSpeed - 0.5); }
+    '-': () => { gameSpeed = Math.max(0.5, gameSpeed - 0.5); },
+    'r': () => toggleRealTimeData(),
+    'R': () => toggleRealTimeData()
 };
 
 function moveSelection(direction) {
@@ -152,6 +165,174 @@ function handleKeyboard(e) {
     }
 }
 
+// ==================== 实时数据集成 ====================
+
+/**
+ * 切换实时数据模式
+ */
+function toggleRealTimeData() {
+    useRealTimeData = !useRealTimeData;
+    const connEl = document.getElementById('connection');
+    if (useRealTimeData) {
+        connEl.textContent = '🔄 实时同步中...';
+        connEl.classList.remove('disconnected');
+        fetchRealTimeStatus();
+    } else {
+        connEl.textContent = '🟢 已连接 (模拟)';
+        connEl.classList.remove('disconnected');
+    }
+    AudioSystem.playClick();
+    console.log(`📡 实时数据模式: ${useRealTimeData ? '开启' : '关闭'}`);
+}
+
+/**
+ * 获取实时状态（支持本地API和模拟）
+ */
+async function fetchRealTimeStatus() {
+    if (!useRealTimeData) return;
+    
+    try {
+        // 尝试从本地API获取
+        const response = await fetch(API_CONFIG.localEndpoint, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateCharactersFromStatus(data);
+            updateConnectionStatus(true, '🔗 已连接实时数据');
+            return;
+        }
+    } catch (error) {
+        console.log('本地API不可用，使用模拟数据');
+    }
+    
+    // 降级到模拟数据
+    simulateOpenClawStatus();
+}
+
+/**
+ * 从状态数据更新角色
+ */
+function updateCharactersFromStatus(status) {
+    if (!status || !status.roles) return;
+    
+    status.roles.forEach(roleData => {
+        const char = characters.find(c => c.id === roleData.id);
+        if (char) {
+            // 更新任务
+            if (roleData.task) char.task = roleData.task;
+            // 更新进度
+            if (roleData.progress !== undefined) char.progress = roleData.progress;
+            // 更新状态
+            if (roleData.status) char.status = roleData.status;
+            // 更新区域（如果有）
+            if (roleData.zone && ZONES[roleData.zone]) {
+                char.zone = roleData.zone;
+            }
+        }
+    });
+    
+    // 更新面板（如果当前选中）
+    if (selectedCharacter) {
+        const char = characters.find(c => c.id === selectedCharacter);
+        if (char) showCharacterPanel(char);
+    }
+    
+    // 更新统计
+    updateStats();
+}
+
+/**
+ * 更新连接状态显示
+ */
+function updateConnectionStatus(connected, text) {
+    const connEl = document.getElementById('connection');
+    if (connected) {
+        connEl.textContent = text || '🟢 已连接';
+        connEl.classList.remove('disconnected');
+    } else {
+        connEl.textContent = '🔴 模拟模式';
+        connEl.classList.add('disconnected');
+    }
+}
+
+/**
+ * 模拟OpenClaw状态（用于演示）
+ */
+function simulateOpenClawStatus() {
+    const tasks = {
+        'pm': ['整理需求文档', '撰写PRD', '用户访谈', '竞品分析'],
+        '产品': ['整理需求文档', '撰写PRD', '用户访谈', '竞品分析'],
+        'fe': ['实现UI组件', '修复样式bug', '优化性能', '编写文档'],
+        '开发': ['实现UI组件', '修复样式bug', '优化性能', '编写文档'],
+        'be': ['编写API接口', '数据库优化', '写单元测试', 'Code Review'],
+        'qa': ['执行测试用例', '编写测试报告', '回归测试', 'Bug验证'],
+        '测试': ['执行测试用例', '编写测试报告', '回归测试', 'Bug验证'],
+        'security': ['漏洞扫描', '安全审计', '渗透测试', '安全培训'],
+        '安全': ['漏洞扫描', '安全审计', '渗透测试', '安全培训'],
+        'miner': ['搜索信息', '整理新闻', '数据分析', '报告撰写'],
+        '查询': ['搜索信息', '整理新闻', '数据分析', '报告撰写'],
+        'ai': ['分配任务', '协调进度', '审核代码', '回复用户'],
+        '主助手': ['分配任务', '协调进度', '审核代码', '回复用户'],
+        'boss': ['下达指令', '开会', '审批文件', '战略规划'],
+        '用户': ['下达指令', '开会', '审批文件', '战略规划'],
+        '创作': ['创作中', '构思情节', '修改稿子', '发布章节'],
+        '产品经理': ['整理需求文档', '撰写PRD', '用户访谈', '竞品分析'],
+        '项目经理': ['协调进度', '更新看板', '会议组织', '风险管理']
+    };
+    
+    // 随机更新部分角色
+    characters.forEach(char => {
+        // 增加进度
+        if (char.status === 'working') {
+            char.progress = Math.min(100, char.progress + Math.floor(Math.random() * 5 * gameSpeed));
+        }
+        
+        // 进度满时切换任务
+        if (char.progress >= 100) {
+            const taskList = tasks[char.role] || tasks[char.name] || ['工作中'];
+            const newTask = taskList[Math.floor(Math.random() * taskList.length)];
+            
+            // 记录到历史
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            char.history = char.history || [];
+            char.history.push({ time: timeStr, task: char.task, completed: true });
+            if (char.history.length > 10) char.history = char.history.slice(-10);
+            
+            char.task = newTask;
+            char.progress = 0;
+            
+            // 30%概率更换区域
+            if (Math.random() < 0.3) {
+                const zoneKeys = Object.keys(ZONES);
+                const currentZoneIndex = zoneKeys.indexOf(char.zone);
+                const newZoneIndex = (currentZoneIndex + Math.floor(Math.random() * 3) + 1) % zoneKeys.length;
+                char.zone = zoneKeys[newZoneIndex];
+            }
+            
+            // 播放完成音效
+            if (useRealTimeData) {
+                AudioSystem.playTaskComplete();
+            }
+        }
+    });
+    
+    if (useRealTimeData) {
+        updateConnectionStatus(true, '🔄 实时同步中...');
+    }
+    
+    // 更新选中面板
+    if (selectedCharacter) {
+        const char = characters.find(c => c.id === selectedCharacter);
+        if (char) showCharacterPanel(char);
+    }
+    
+    updateStats();
+}
+
 // ==================== 初始化 ====================
 
 function init() {
@@ -167,8 +348,35 @@ function init() {
     // 绑定键盘事件
     document.addEventListener('keydown', handleKeyboard);
     
-    // 移动端触摸支持
+    // 移动端触摸支持（改进）
     canvas.addEventListener('touchstart', handleTouch, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd);
+    
+    // 双指缩放支持
+    let initialPinchDistance = 0;
+    let currentScale = 1;
+    
+    function handleTouchMove(e) {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (initialPinchDistance === 0) {
+                initialPinchDistance = distance;
+            } else {
+                const scale = distance / initialPinchDistance;
+                currentScale = Math.max(0.5, Math.min(2, scale));
+                canvas.style.transform = `scale(${currentScale})`;
+            }
+        }
+    }
+    
+    function handleTouchEnd(e) {
+        initialPinchDistance = 0;
+    }
     
     // 响应式画布
     resizeCanvas();
@@ -181,14 +389,21 @@ function init() {
     updateTime();
     setInterval(updateTime, 1000);
     
-    // 模拟状态变化
-    simulateStatusChanges();
+    // 启动状态模拟（使用模拟模式）
+    updateConnectionStatus(false);
+    setInterval(() => {
+        if (useRealTimeData) {
+            fetchRealTimeStatus();
+        } else {
+            simulateOpenClawStatus();
+        }
+    }, API_CONFIG.simulationInterval);
     
     // 初始统计更新
     updateStats();
     
     console.log('🎮 Snoopy-Office 已启动');
-    console.log('⌨️ 快捷键: 1-8 选择角色, ESC 关闭, +/- 调整速度');
+    console.log('⌨️ 快捷键: 1-8 选择角色, ESC 关闭, +/- 调整速度, R 切换实时数据');
 }
 
 // ==================== 游戏循环 ====================
@@ -206,17 +421,24 @@ function gameLoop() {
 // ==================== 更新逻辑 ====================
 
 function update() {
-    // 角色随机移动（轻微动画效果）
+    // 角色动画效果
     characters.forEach(char => {
         if (char.status === 'idle') {
             char.x = char.x || getZoneCenter(char.zone).x;
             char.y = char.y || getZoneCenter(char.zone).y;
-            // 轻微晃动
+            // 轻微晃动（待机动画）
             char.offsetX = Math.sin(animationFrame * 0.05 + char.id.charCodeAt(0)) * 2;
             char.offsetY = Math.cos(animationFrame * 0.03 + char.id.charCodeAt(0)) * 2;
         } else {
+            // 工作动画：轻微上下浮动
             char.offsetX = Math.sin(animationFrame * 0.1) * 1;
-            char.offsetY = 0;
+            char.offsetY = Math.sin(animationFrame * 0.15) * 1;
+            
+            // 工作类型特定的动画效果
+            if (['开发', '产品', '测试', '创作'].includes(char.role)) {
+                // 敲键盘动画：定期"敲击"
+                char.typingFrame = Math.floor(animationFrame / 10) % 4;
+            }
         }
     });
 }
@@ -260,7 +482,7 @@ function drawZones() {
     // 绘制各区域
     Object.entries(ZONES).forEach(([key, zone]) => {
         // 区域背景
-        ctx.fillStyle = zone.color + '40'; // 透明背景
+        ctx.fillStyle = zone.color + '40';
         ctx.fillRect(zone.x, zone.y, zone.width, zone.height);
         
         // 区域边框
@@ -290,7 +512,7 @@ function drawCharacters() {
         ctx.ellipse(x, y + 18, 12, 6, 0, 0, Math.PI * 2);
         ctx.fill();
         
-        // 绘制角色身体（像素风格）
+        // 绘制角色
         drawPixelCharacter(x + (char.offsetX || 0), y + (char.offsetY || 0), char);
         
         // 绘制任务气泡
@@ -309,42 +531,85 @@ function drawPixelCharacter(x, y, char) {
     ctx.fillStyle = COLORS.peach;
     ctx.fillRect(x - 8, y - 18, 16, 14);
     
-    // 眼睛 - 工作时闪烁
+    // 眼睛 - 根据状态变化
     ctx.fillStyle = COLORS.black;
-    if (char.status === 'working' && Math.floor(animationFrame / 30) % 2 === 0) {
-        ctx.fillStyle = COLORS.green; // 工作时眼睛发绿光
-    }
-    ctx.fillRect(x - 5, y - 14, 3, 3);
-    ctx.fillRect(x + 2, y - 14, 3, 3);
+    const isWorking = char.status === 'working';
+    const blinkFrame = Math.floor(animationFrame / 30) % 2 === 0;
     
-    // 根据角色绘制特殊标识
+    if (isWorking) {
+        // 工作时：专注表情（稍大眼睛）
+        ctx.fillStyle = blinkFrame ? COLORS.green : COLORS.darkGreen;
+        ctx.fillRect(x - 5, y - 14, 4, 4);
+        ctx.fillRect(x + 2, y - 14, 4, 4);
+    } else if (char.role === '用户') {
+        // 老板：威严表情
+        ctx.fillStyle = COLORS.black;
+        ctx.fillRect(x - 5, y - 14, 3, 3);
+        ctx.fillRect(x + 2, y - 14, 3, 3);
+    } else {
+        // 待命/摸鱼：放松表情
+        ctx.fillStyle = blinkFrame ? COLORS.orange : COLORS.brown;
+        ctx.fillRect(x - 5, y - 14, 3, 3);
+        ctx.fillRect(x + 2, y - 14, 3, 3);
+    }
+    
+    // 角色特定装饰
     ctx.fillStyle = COLORS.white;
     switch (char.role) {
         case '用户':
             // 领带
-            ctx.fillRect(x - 2, y - 5, 4, 8);
+            ctx.fillStyle = COLORS.red;
+            ctx.fillRect(x - 2, y - 5, 4, 10);
             break;
         case '主助手':
             // 天线 - 工作时闪烁
+            ctx.fillStyle = COLORS.lightGray;
             ctx.fillRect(x - 1, y - 24, 2, 6);
-            ctx.fillStyle = (char.status === 'working' && Math.floor(animationFrame / 20) % 2 === 0) ? COLORS.yellow : COLORS.green;
+            ctx.fillStyle = (isWorking && Math.floor(animationFrame / 20) % 2 === 0) ? COLORS.yellow : COLORS.green;
             ctx.fillRect(x - 2, y - 25, 4, 2);
             break;
         case '开发':
-            // 眼镜
+            // 眼镜 + 敲键盘效果
             ctx.fillStyle = COLORS.blue;
             ctx.fillRect(x - 7, y - 14, 14, 2);
+            // 敲键盘动画效果
+            if (isWorking && char.typingFrame % 2 === 0) {
+                ctx.fillRect(x + 8, y - 2, 6, 2);
+            }
             break;
         case '测试':
             // 放大镜
             ctx.fillStyle = COLORS.lightGray;
             ctx.fillRect(x + 6, y - 8, 6, 6);
             break;
+        case '产品':
+            // 眼镜
+            ctx.fillStyle = COLORS.indigo;
+            ctx.fillRect(x - 6, y - 14, 12, 2);
+            break;
+        case '安全':
+            // 耳机
+            ctx.fillStyle = COLORS.red;
+            ctx.fillRect(x - 12, y - 10, 4, 6);
+            ctx.fillRect(x + 8, y - 10, 4, 6);
+            break;
+        case '查询':
+            // 搜索图标
+            ctx.fillStyle = COLORS.orange;
+            ctx.fillRect(x + 5, y - 12, 6, 6);
+            break;
+        case '创作':
+            // 笔
+            ctx.fillStyle = COLORS.pink;
+            if (isWorking && char.typingFrame === 1) {
+                ctx.fillRect(x + 6, y - 4, 8, 2); // 拿笔写字
+            }
+            break;
     }
     
     // 状态指示器 - 优化动画
-    const statusColor = char.status === 'working' ? COLORS.green : COLORS.orange;
-    const blinkOn = Math.floor(animationFrame / (char.status === 'working' ? 15 : 40)) % 2 === 0;
+    const statusColor = isWorking ? COLORS.green : COLORS.orange;
+    const blinkOn = Math.floor(animationFrame / (isWorking ? 15 : 40)) % 2 === 0;
     
     if (blinkOn) {
         ctx.fillStyle = statusColor;
@@ -354,29 +619,52 @@ function drawPixelCharacter(x, y, char) {
 }
 
 function drawTaskBubble(x, y, char) {
+    const task = char.task || '工作中';
+    const progress = char.progress || 0;
+    
     // 气泡背景
-    ctx.fillStyle = COLORS.white;
-    ctx.fillRect(x - 30, y - 12, 60, 20);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = char.color;
+    ctx.lineWidth = 2;
     
-    // 气泡边框
-    ctx.strokeStyle = COLORS.black;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x - 30, y - 12, 60, 20);
+    const bubbleWidth = Math.min(task.length * 8 + 20, 120);
+    const bubbleHeight = 24;
+    const bubbleX = x - bubbleWidth / 2;
+    const bubbleY = y - bubbleHeight / 2;
     
-    // 气泡三角
-    ctx.fillStyle = COLORS.white;
-    ctx.beginPath();
-    ctx.moveTo(x - 5, y + 8);
-    ctx.lineTo(x, y + 15);
-    ctx.lineTo(x + 5, y + 8);
+    // 圆角矩形
+    roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 6);
     ctx.fill();
+    ctx.stroke();
+    
+    // 气泡尖角
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.beginPath();
+    ctx.moveTo(x - 6, bubbleY + bubbleHeight);
+    ctx.lineTo(x, bubbleY + bubbleHeight + 6);
+    ctx.lineTo(x + 6, bubbleY + bubbleHeight);
+    ctx.fill();
+    ctx.strokeStyle = char.color;
+    ctx.beginPath();
+    ctx.moveTo(x - 6, bubbleY + bubbleHeight);
+    ctx.lineTo(x, bubbleY + bubbleHeight + 6);
+    ctx.lineTo(x + 6, bubbleY + bubbleHeight);
     ctx.stroke();
     
     // 任务文字
     ctx.fillStyle = COLORS.black;
-    ctx.font = '8px "Courier New"';
-    const task = char.task.length > 8 ? char.task.substring(0, 7) + '..' : char.task;
-    ctx.fillText(task, x - 25, y + 3);
+    ctx.font = '10px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.fillText(task.substring(0, 12), x, bubbleY + 15);
+    
+    // 进度条
+    const progressY = bubbleY + bubbleHeight + 10;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x - 25, progressY, 50, 4);
+    ctx.fillStyle = char.color;
+    ctx.fillRect(x - 25, progressY, 50 * (progress / 100), 4);
+    
+    ctx.textAlign = 'left';
 }
 
 function drawSelectionHighlight() {
@@ -394,20 +682,54 @@ function drawSelectionHighlight() {
 
 function handleClick(e) {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     // 检查点击是否在角色上
     const clickedChar = characters.find(char => {
         const pos = getCharacterPosition(char);
         const charX = pos.x || getZoneCenter(char.zone).x;
         const charY = pos.y || getZoneCenter(char.zone).y;
-        return Math.abs(x - charX) < 20 && Math.abs(y - charY) < 25;
+        return Math.abs(x - charX) < 25 && Math.abs(y - charY) < 30;
     });
     
     if (clickedChar) {
         selectedCharacter = clickedChar.id;
         AudioSystem.playSelect();
+        showCharacterPanel(clickedChar);
+    } else {
+        selectedCharacter = null;
+        closePanel();
+    }
+}
+
+// 触摸事件处理（改进）
+let touchStartTime = 0;
+let touchStartPos = { x: 0, y: 0 };
+
+function handleTouch(e) {
+    e.preventDefault();
+    touchStartTime = Date.now();
+    
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (touch.clientX - rect.left) * scaleX;
+    const y = (touch.clientY - rect.top) * scaleY;
+    touchStartPos = { x, y };
+    
+    const clickedChar = characters.find(char => {
+        const pos = getCharacterPosition(char);
+        const charX = pos.x || getZoneCenter(char.zone).x;
+        const charY = pos.y || getZoneCenter(char.zone).y;
+        return Math.abs(x - charX) < 30 && Math.abs(y - charY) < 35;
+    });
+    
+    if (clickedChar) {
+        selectedCharacter = clickedChar.id;
         showCharacterPanel(clickedChar);
     } else {
         selectedCharacter = null;
@@ -425,7 +747,7 @@ function showCharacterPanel(char) {
     document.getElementById('panel-location').textContent = ZONES[char.zone]?.name || char.zone;
     document.getElementById('panel-task').textContent = char.task || '暂无任务';
     
-    // 显示任务时间轴
+    // 任务时间轴
     const timelineEl = document.getElementById('panel-timeline');
     if (char.history && char.history.length > 0) {
         timelineEl.innerHTML = char.history.slice(-5).map(item => `
@@ -444,39 +766,13 @@ function closePanel() {
     document.getElementById('character-panel').classList.add('hidden');
 }
 
-// 响应式画布适配
+// 响应式画布
 function resizeCanvas() {
     const container = canvas.parentElement;
     const maxWidth = container.clientWidth - 40;
     const scale = Math.min(maxWidth / 800, 1);
     canvas.style.width = (800 * scale) + 'px';
     canvas.style.height = (600 * scale) + 'px';
-}
-
-// 触摸事件处理
-function handleTouch(e) {
-    e.preventDefault();
-    const touch = e.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = (touch.clientX - rect.left) * scaleX;
-    const y = (touch.clientY - rect.top) * scaleY;
-    
-    const clickedChar = characters.find(char => {
-        const pos = getCharacterPosition(char);
-        const charX = pos.x || getZoneCenter(char.zone).x;
-        const charY = pos.y || getZoneCenter(char.zone).y;
-        return Math.abs(x - charX) < 25 && Math.abs(y - charY) < 30;
-    });
-    
-    if (clickedChar) {
-        selectedCharacter = clickedChar.id;
-        showCharacterPanel(clickedChar);
-    } else {
-        selectedCharacter = null;
-        closePanel();
-    }
 }
 
 // ==================== 工具函数 ====================
@@ -502,8 +798,6 @@ function updateTime() {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     document.getElementById('time').textContent = `🕐 ${hours}:${minutes}`;
-    
-    // 更新统计面板
     updateStats();
 }
 
@@ -518,142 +812,8 @@ function updateStats() {
     document.getElementById('stat-speed').textContent = gameSpeed.toFixed(1) + 'x';
 }
 
-// ==================== 模拟状态变化 ====================
+// ==================== 增强功能：平滑移动 ====================
 
-function simulateStatusChanges() {
-    // 每10秒随机更新一个角色的状态
-    setInterval(() => {
-        const randomIndex = Math.floor(Math.random() * characters.length);
-        const char = characters[randomIndex];
-        
-        // 随机改变进度
-        char.progress = Math.min(100, char.progress + Math.floor(Math.random() * 20));
-        
-        // 如果进度满了，随机切换任务
-        if (char.progress >= 100) {
-            const tasks = {
-                'pm': ['整理需求文档', '撰写PRD', '用户访谈', '竞品分析'],
-                '产品': ['整理需求文档', '撰写PRD', '用户访谈', '竞品分析'],
-                'fe': ['实现UI组件', '修复样式bug', '优化性能', '编写文档'],
-                '开发': ['实现UI组件', '修复样式bug', '优化性能', '编写文档'],
-                'be': ['编写API接口', '数据库优化', '写单元测试', 'Code Review'],
-                'qa': ['执行测试用例', '编写测试报告', '回归测试', 'Bug验证'],
-                '测试': ['执行测试用例', '编写测试报告', '回归测试', 'Bug验证'],
-                'security': ['漏洞扫描', '安全审计', '渗透测试', '安全培训'],
-                '安全': ['漏洞扫描', '安全审计', '渗透测试', '安全培训'],
-                'miner': ['搜索信息', '整理新闻', '数据分析', '报告撰写'],
-                '查询': ['搜索信息', '整理新闻', '数据分析', '报告撰写'],
-                'ai': ['分配任务', '协调进度', '审核代码', '回复用户'],
-                '主助手': ['分配任务', '协调进度', '审核代码', '回复用户'],
-                'boss': ['下达指令', '开会', '审批文件', '战略规划'],
-                '用户': ['下达指令', '开会', '审批文件', '战略规划'],
-                '创作': ['创作中', '构思情节', '修改稿子', '发布章节'],
-                '产品经理': ['整理需求文档', '撰写PRD', '用户访谈', '竞品分析'],
-                '项目经理': ['协调进度', '更新看板', '会议组织', '风险管理']
-            };
-            const taskList = tasks[char.role] || tasks[char.name] || ['工作中'];
-            const newTask = taskList[Math.floor(Math.random() * taskList.length)];
-            
-            // 记录任务完成到历史
-            const now = new Date();
-            const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-            char.history = char.history || [];
-            char.history.push({
-                time: timeStr,
-                task: char.task,
-                completed: true
-            });
-            // 保留最近10条记录
-            if (char.history.length > 10) {
-                char.history = char.history.slice(-10);
-            }
-            
-            char.task = newTask;
-            char.progress = 0;
-            
-            // 任务完成音效
-            AudioSystem.playTaskComplete();
-            
-            // 30%概率更换区域（模拟角色移动）
-            if (Math.random() < 0.3) {
-                const zoneKeys = Object.keys(ZONES);
-                const currentZoneIndex = zoneKeys.indexOf(char.zone);
-                // 移动到相邻区域
-                const newZoneIndex = (currentZoneIndex + Math.floor(Math.random() * 3) + 1) % zoneKeys.length;
-                char.zone = zoneKeys[newZoneIndex];
-            }
-        }
-        
-        // 更新面板（如果当前选中）
-        if (selectedCharacter === char.id) {
-            showCharacterPanel(char);
-        }
-    }, 5000);
-}
-
-// ==================== 状态获取（模拟OpenClaw API） ====================
-
-// 模拟从OpenClaw获取状态
-async function fetchOpenClawStatus() {
-    try {
-        // 实际项目中替换为真实API调用
-        // const response = await fetch('/api/status');
-        // return await response.json();
-        
-        // 模拟返回数据
-        return {
-            timestamp: Date.now(),
-            roles: characters.map(c => ({
-                id: c.id,
-                task: c.task,
-                progress: c.progress,
-                status: c.status
-            }))
-        };
-    } catch (error) {
-        console.error('获取状态失败:', error);
-        return null;
-    }
-}
-
-// 实时状态连接指示
-function updateConnectionStatus(connected) {
-    const connEl = document.getElementById('connection');
-    if (connected) {
-        connEl.textContent = '🟢 已连接';
-        connEl.classList.remove('disconnected');
-    } else {
-        connEl.textContent = '🔴 模拟模式';
-        connEl.classList.add('disconnected');
-    }
-}
-
-// 初始化连接状态
-updateConnectionStatus(false);
-
-// 定时获取状态（每5秒）
-setInterval(async () => {
-    const status = await fetchOpenClawStatus();
-    if (status) {
-        updateCharactersFromStatus(status);
-        updateConnectionStatus(false); // 显示模拟模式
-    }
-}, 5000);
-
-function updateCharactersFromStatus(status) {
-    status.roles.forEach(roleData => {
-        const char = characters.find(c => c.id === roleData.id);
-        if (char) {
-            char.task = roleData.task;
-            char.progress = roleData.progress;
-            char.status = roleData.status;
-        }
-    });
-}
-
-// ==================== 增强功能：角色平滑移动 ====================
-
-// 目标位置映射（用于平滑移动动画）
 let targetPositions = {};
 let currentPositions = {};
 
@@ -666,70 +826,17 @@ function updateCharacterPositions() {
         const target = getZoneCenter(char.zone);
         const current = currentPositions[char.id] || target;
         
-        // 平滑移动到目标位置
         currentPositions[char.id] = {
             x: lerp(current.x, target.x, 0.05),
             y: lerp(current.y, target.y, 0.05)
         };
         
-        // 存储到角色对象
         char.x = currentPositions[char.id].x;
         char.y = currentPositions[char.id].y;
     });
 }
 
-// ==================== 增强功能：任务气泡优化 ====================
-
-function drawTaskBubble(x, y, char) {
-    const task = char.task || '工作中';
-    const progress = char.progress || 0;
-    
-    // 气泡背景（带圆角矩形）
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    ctx.strokeStyle = char.color;
-    ctx.lineWidth = 2;
-    
-    const bubbleWidth = Math.min(task.length * 8 + 20, 120);
-    const bubbleHeight = 24;
-    const bubbleX = x - bubbleWidth / 2;
-    const bubbleY = y - bubbleHeight / 2;
-    
-    // 绘制圆角矩形
-    roundRect(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, 6);
-    ctx.fill();
-    ctx.stroke();
-    
-    // 气泡尖角
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    ctx.beginPath();
-    ctx.moveTo(x - 6, bubbleY + bubbleHeight);
-    ctx.lineTo(x, bubbleY + bubbleHeight + 6);
-    ctx.lineTo(x + 6, bubbleY + bubbleHeight);
-    ctx.fill();
-    
-    // 气泡尖角边框
-    ctx.strokeStyle = char.color;
-    ctx.beginPath();
-    ctx.moveTo(x - 6, bubbleY + bubbleHeight);
-    ctx.lineTo(x, bubbleY + bubbleHeight + 6);
-    ctx.lineTo(x + 6, bubbleY + bubbleHeight);
-    ctx.stroke();
-    
-    // 任务文字
-    ctx.fillStyle = COLORS.black;
-    ctx.font = '10px "Courier New"';
-    ctx.textAlign = 'center';
-    ctx.fillText(task.substring(0, 12), x, bubbleY + 15);
-    
-    // 进度条
-    const progressY = bubbleY + bubbleHeight + 10;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(x - 25, progressY, 50, 4);
-    ctx.fillStyle = char.color;
-    ctx.fillRect(x - 25, progressY, 50 * (progress / 100), 4);
-    
-    ctx.textAlign = 'left';
-}
+// ==================== 绘制辅助函数 ====================
 
 function roundRect(ctx, x, y, width, height, radius) {
     ctx.beginPath();
@@ -745,23 +852,18 @@ function roundRect(ctx, x, y, width, height, radius) {
     ctx.closePath();
 }
 
-// ==================== 增强功能：全屏模式 ====================
+// ==================== 增强功能：全屏/导入导出 ====================
 
 function toggleFullscreen() {
     if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
-            console.log('全屏模式不支持');
-        });
+        document.documentElement.requestFullscreen().catch(() => {});
     } else {
         document.exitFullscreen();
     }
 }
 
-// 键盘快捷键扩展
 KEYBOARD_SHORTCUTS['f'] = toggleFullscreen;
 KEYBOARD_SHORTCUTS['F'] = toggleFullscreen;
-
-// ==================== 增强功能：数据导出/导入 ====================
 
 function exportState() {
     const state = {
@@ -777,7 +879,6 @@ function exportState() {
     a.click();
     URL.revokeObjectURL(url);
     AudioSystem.playClick();
-    console.log('📦 状态已导出');
 }
 
 function importState(file) {
@@ -789,11 +890,9 @@ function importState(file) {
                 characters = state.characters;
                 updateStats();
                 AudioSystem.playSelect();
-                console.log('📥 状态已导入');
             }
         } catch (err) {
             AudioSystem.playError();
-            console.error('导入失败:', err);
         }
     };
     reader.readAsText(file);
@@ -805,12 +904,10 @@ function toggleSound() {
     AudioSystem.enabled = !AudioSystem.enabled;
     const btn = document.getElementById('sound-toggle');
     btn.textContent = AudioSystem.enabled ? '🔊' : '🔇';
-    if (AudioSystem.enabled) {
-        AudioSystem.playClick();
-    }
+    if (AudioSystem.enabled) AudioSystem.playClick();
 }
 
-// 修改游戏循环以支持平滑移动
+// 游戏循环增强
 const originalGameLoop = gameLoop;
 gameLoop = function() {
     updateCharacterPositions();

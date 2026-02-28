@@ -283,12 +283,26 @@ footer {
         flex-direction: column;
         gap: 10px;
         text-align: center;
+        padding: 10px;
+    }
+    
+    h1 {
+        font-size: 1.2rem;
+    }
+    
+    .status-bar {
+        gap: 8px;
+        font-size: 0.8rem;
+        flex-wrap: wrap;
+        justify-content: center;
     }
     
     .panel {
         width: calc(100% - 20px);
         right: 10px;
         left: 10px;
+        max-height: 50vh;
+        overflow-y: auto;
     }
     
     #office {
@@ -297,7 +311,36 @@ footer {
     }
     
     .legend {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
+        gap: 8px;
+    }
+    
+    .stats-panel {
+        font-size: 0.65rem;
+        padding: 6px 10px;
+    }
+    
+    .timeline {
+        max-height: 80px;
+    }
+}
+
+/* 触摸优化 */
+@media (hover: none) and (pointer: coarse) {
+    .sound-btn {
+        padding: 8px 12px;
+        font-size: 1.1rem;
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    .close-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    .panel {
+        touch-action: pan-y;
     }
 }
 
