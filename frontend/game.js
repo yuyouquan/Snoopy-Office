@@ -113,8 +113,10 @@ let useRealTimeData = true; // 默认开启实时数据
 
 // 实时数据API配置
 const API_CONFIG = {
-    // 本地API端点（可在本地开发时使用）
+    // 本地API端点
     localEndpoint: '/api/status',
+    // 静态JSON fallback
+    staticEndpoint: '/api/status.json',
     // 模拟数据间隔
     simulationInterval: 5000,
     // 重试次数
@@ -186,7 +188,7 @@ function toggleRealTimeData() {
 }
 
 /**
- * 获取实时状态（支持本地API和模拟）
+ * 获取实时状态（支持本地API、静态JSON和模拟）
  */
 async function fetchRealTimeStatus() {
     if (!useRealTimeData) return;
@@ -200,10 +202,8 @@ async function fetchRealTimeStatus() {
         
         // 检查HTTP状态和Content-Type
         if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
-            console.log('API返回非JSON响应，使用模拟数据');
-            updateConnectionStatus(false);
-            simulateOpenClawStatus();
-            return;
+            console.log('API返回非JSON响应，尝试静态JSON...');
+            return await tryStaticJSON();
         }
         
         const data = await response.json();
@@ -211,8 +211,25 @@ async function fetchRealTimeStatus() {
         updateConnectionStatus(true, '🔗 已连接实时数据');
         return;
     } catch (error) {
-        console.log('本地API不可用，使用模拟数据:', error.message);
-        updateConnectionStatus(false);
+        console.log('本地API不可用，尝试静态JSON:', error.message);
+    }
+    
+    // 尝试静态JSON
+    await tryStaticJSON();
+}
+
+// 尝试从静态JSON获取数据
+async function tryStaticJSON() {
+    try {
+        const response = await fetch(API_CONFIG.staticEndpoint);
+        if (response.ok) {
+            const data = await response.json();
+            updateCharactersFromStatus(data);
+            updateConnectionStatus(true, '📦 已连接静态数据');
+            return;
+        }
+    } catch (e) {
+        console.log('静态JSON不可用:', e.message);
     }
     
     // 降级到模拟数据

@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "timestamp": 1709280000000,
+  "data": {
+    "characters": [
+      { "id": "boss", "name": "👔 老板", "status": "idle", "task": "下达指令", "progress": 100, "zone": "boss" },
+      { "id": "ai", "name": "🤖 AI助手", "status": "working", "task": "分配任务", "progress": 75, "zone": "ai" },
+      { "id": "pm", "name": "📋 产品经理", "status": "working", "task": "整理需求文档", "progress": 60, "zone": "pm" },
+      { "id": "pm_manager", "name": "📊 项目经理", "status": "meeting", "task": "协调进度", "progress": 50, "zone": "meeting" },
+      { "id": "fe", "name": "💻 前端开发", "status": "working", "task": "实现UI组件", "progress": 45, "zone": "dev" },
+      { "id": "be", "name": "⚙️ 后端开发", "status": "working", "task": "编写API接口", "progress": 30, "zone": "dev" },
+      { "id": "qa", "name": "🧪 测试工程师", "status": "working", "task": "执行测试用例", "progress": 20, "zone": "test" },
+      { "id": "security", "name": "🔒 安全专家", "status": "idle", "task": "漏洞扫描", "progress": 0, "zone": "security" },
+      { "id": "miner", "name": "🔍 新闻矿工", "status": "working", "task": "搜索信息", "progress": 80, "zone": "search" },
+      { "id": "writer", "name": "✍️ 小说家", "status": "working", "task": "创作小说", "progress": 55, "zone": "break" }
+    ],
+    "stats": { "working": 8, "idle": 2, "total": 10, "progress": 52 }
+  }
+}
