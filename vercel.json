@@ -1,5 +1,16 @@
 {
-  "rewrites": [
-    { "source": "/api/status", "destination": "/api/status.js" }
+  "routes": [
+    {
+      "src": "/api/status",
+      "dest": "/api/status.js",
+      "methods": ["GET"]
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }
