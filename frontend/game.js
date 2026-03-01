@@ -3241,5 +3241,450 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// ==================== 迭代24: 数据持久化系统 ====================
+const PersistenceSystem = {
+    STORAGE_KEY: 'snoopy_office_data',
+    
+    // 保存所有用户数据
+    save() {
+        const data = {
+            theme: ThemeSystem.current,
+            timePeriod: TimeOfDaySystem.currentPeriod,
+            weather: WeatherSystem.current,
+            customMarkers: CustomMarkers.markers,
+            customSkins: CharacterSkinSystem.customSkins,
+            taskHistory: TaskTimeline.history.slice(0, 100), // 保存最近100条
+            preferences: {
+                soundEnabled: AudioSystem.enabled,
+                showMinimap: MinimapSystem.enabled,
+                showHeatmap: HeatmapSystem.show,
+                showRankings: RankingSystem.show,
+                followMode: FollowSystem.enabled
+            },
+            lastVisit: Date.now()
+        };
+        
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+            console.log('💾 数据已保存');
+        } catch (e) {
+            console.warn('保存失败:', e);
+        }
+    },
+    
+    // 加载用户数据
+    load() {
+        try {
+            const stored = localStorage.getItem(this.STORAGE_KEY);
+            if (!stored) return false;
+            
+            const data = JSON.parse(stored);
+            
+            // 恢复主题
+            if (data.theme) {
+                ThemeSystem.current = data.theme;
+                ThemeSystem.apply();
+            }
+            
+            // 恢复时间
+            if (data.timePeriod) {
+                TimeOfDaySystem.currentPeriod = data.timePeriod;
+            }
+            
+            // 恢复天气
+            if (data.weather) {
+                WeatherSystem.current = data.weather;
+                if (data.weather !== 'none') {
+                    WeatherSystem.active = true;
+                    WeatherSystem.initParticles();
+                }
+            }
+            
+            // 恢复自定义标记
+            if (data.customMarkers) {
+                CustomMarkers.markers = data.customMarkers;
+            }
+            
+            // 恢复自定义皮肤
+            if (data.customSkins) {
+                Object.assign(CharacterSkinSystem.customSkins, data.customSkins);
+            }
+            
+            // 恢复任务历史
+            if (data.taskHistory) {
+                TaskTimeline.history = data.taskHistory;
+            }
+            
+            // 恢复偏好设置
+            if (data.preferences) {
+                const p = data.preferences;
+                if (typeof p.soundEnabled === 'boolean') AudioSystem.enabled = p.soundEnabled;
+                if (typeof p.showMinimap === 'boolean') MinimapSystem.enabled = p.showMinimap;
+                if (typeof p.showHeatmap === 'boolean') HeatmapSystem.show = p.showHeatmap;
+                if (typeof p.showRankings === 'boolean') RankingSystem.show = p.showRankings;
+                if (typeof p.followMode === 'boolean') FollowSystem.enabled = p.followMode;
+            }
+            
+            console.log('📂 数据已加载');
+            return true;
+        } catch (e) {
+            console.warn('加载失败:', e);
+            return false;
+        }
+    },
+    
+    // 清除所有数据
+    clear() {
+        localStorage.removeItem(this.STORAGE_KEY);
+        console.log('🗑️ 数据已清除');
+    },
+    
+    // 自动保存（每30秒）
+    startAutoSave() {
+        setInterval(() => this.save(), 30000);
+    }
+};
+
+// ==================== 迭代24: 角色互动系统 ====================
+const InteractionSystem = {
+    show: false,
+    interactions: [],
+    
+    // 角色对话
+    say(charId, message, duration = 3000) {
+        const char = characters.find(c => c.id === charId);
+        if (!char) return;
+        
+        this.interactions.push({
+            charId,
+            message,
+            startTime: Date.now(),
+            duration,
+            type: 'say'
+        });
+        
+        // 播放对话音效
+        AudioSystem.playSelect();
+    },
+    
+    // 角色动作反馈
+    react(charId, emotion, duration = 1500) {
+        const char = characters.find(c => c.id === charId);
+        if (!char) return;
+        
+        char.reaction = { emotion, startTime: Date.now(), duration };
+    },
+    
+    // 绘制互动气泡
+    draw() {
+        this.interactions = this.interactions.filter(i => 
+            Date.now() - i.startTime < i.duration
+        );
+        
+        this.interactions.forEach(interaction => {
+            const char = characters.find(c => c.id === interaction.charId);
+            if (!char) return;
+            
+            const pos = getCharacterPosition(char);
+            const bubbleX = pos.x;
+            const bubbleY = pos.y - 40;
+            
+            // 气泡背景
+            ctx.fillStyle = COLORS.white;
+            ctx.strokeStyle = COLORS.black;
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.roundRect(bubbleX - 60, bubbleY - 20, 120, 30, 5);
+            ctx.fill();
+            ctx.stroke();
+            
+            // 气泡文字
+            ctx.fillStyle = COLORS.black;
+            ctx.font = '10px "Courier New"';
+            ctx.textAlign = 'center';
+            
+            const text = interaction.message.length > 15 
+                ? interaction.message.substring(0, 12) + '...' 
+                : interaction.message;
+            ctx.fillText(text, bubbleX, bubbleY + 5);
+        });
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+    }
+};
+
+// ==================== 迭代24: 团队协作可视化 ====================
+const CollaborationSystem = {
+    show: false,
+    connections: [],
+    
+    // 检测团队协作关系
+    detectCollaborations() {
+        this.connections = [];
+        
+        // 查找在同一区域工作的角色
+        const zones = {};
+        
+        characters.forEach(char => {
+            const zone = getCharacterZone(char);
+            if (!zones[zone]) zones[zone] = [];
+            zones[zone].push(char);
+        });
+        
+        // 为同一区域的创建连接
+        Object.entries(zones).forEach(([zone, chars]) => {
+            if (chars.length > 1) {
+                for (let i = 0; i < chars.length - 1; i++) {
+                    for (let j = i + 1; j < chars.length; j++) {
+                        this.connections.push({
+                            from: chars[i].id,
+                            to: chars[j].id,
+                            zone,
+                            strength: this.calculateCollaborationStrength(chars[i], chars[j])
+                        });
+                    }
+                }
+            }
+        });
+    },
+    
+    // 计算协作强度
+    calculateCollaborationStrength(char1, char2) {
+        // 基于任务相似度和区域 proximity
+        let strength = 0;
+        
+        // 任务类型相同
+        if (char1.task && char2.task && char1.task.type === char2.task.type) {
+            strength += 0.5;
+        }
+        
+        // 都在开发/测试区
+        const pos1 = getCharacterPosition(char1);
+        const pos2 = getCharacterPosition(char2);
+        const dist = Math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2);
+        
+        if (dist < 100) strength += 0.5;
+        
+        return Math.min(1, strength);
+    },
+    
+    // 绘制协作线
+    draw() {
+        if (!this.show) return;
+        
+        // 定期更新
+        if (Math.random() < 0.02) {
+            this.detectCollaborations();
+        }
+        
+        this.connections.forEach(conn => {
+            const fromChar = characters.find(c => c.id === conn.from);
+            const toChar = characters.find(c => c.id === conn.to);
+            
+            if (!fromChar || !toChar) return;
+            
+            const fromPos = getCharacterPosition(fromChar);
+            const toPos = getCharacterPosition(toChar);
+            
+            // 绘制连线
+            const alpha = conn.strength * 0.5;
+            ctx.strokeStyle = `rgba(0, 228, 54, ${alpha})`;
+            ctx.lineWidth = 2 + conn.strength * 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(fromPos.x, fromPos.y);
+            ctx.lineTo(toPos.x, toPos.y);
+            ctx.stroke();
+            
+            // 绘制协作强度指示
+            if (conn.strength > 0.5) {
+                const midX = (fromPos.x + toPos.x) / 2;
+                const midY = (fromPos.y + toPos.y) / 2;
+                
+                ctx.fillStyle = COLORS.green;
+                ctx.font = 'bold 10px "Courier New"';
+                ctx.textAlign = 'center';
+                ctx.fillText('🤝', midX, midY);
+            }
+        });
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        if (this.show) {
+            this.detectCollaborations();
+        }
+        AudioSystem.playClick();
+    }
+};
+
+// ==================== 迭代24: 任务共享系统 ====================
+const TaskSharingSystem = {
+    show: false,
+    sharedTasks: [],
+    
+    // 分享任务给其他角色
+    shareTask(fromCharId, toCharId, task) {
+        const sharedTask = {
+            id: Date.now(),
+            from: fromCharId,
+            to: toCharId,
+            task: { ...task },
+            sharedAt: Date.now(),
+            accepted: false
+        };
+        
+        this.sharedTasks.push(sharedTask);
+        
+        // 通知目标角色
+        const toChar = characters.find(c => c.id === toCharId);
+        if (toChar) {
+            InteractionSystem.say(toCharId, `收到新任务: ${task.name || task.description}`, 4000);
+        }
+        
+        AudioSystem.playTaskComplete();
+        return sharedTask;
+    },
+    
+    // 接受共享任务
+    acceptTask(shareId) {
+        const shared = this.sharedTasks.find(s => s.id === shareId);
+        if (shared) {
+            shared.accepted = true;
+            
+            const toChar = characters.find(c => c.id === shared.to);
+            if (toChar) {
+                toChar.task = shared.task;
+            }
+            
+            AudioSystem.playTaskComplete();
+        }
+    },
+    
+    // 绘制共享任务指示
+    draw() {
+        if (!this.show) return;
+        
+        this.sharedTasks.forEach(shared => {
+            const toChar = characters.find(c => c.id === shared.to);
+            if (!toChar) return;
+            
+            const pos = getCharacterPosition(toChar);
+            
+            // 闪烁的任务图标
+            const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+            
+            ctx.fillStyle = shared.accepted 
+                ? `rgba(0, 228, 54, ${pulse})` 
+                : `rgba(255, 165, 0, ${pulse})`;
+            
+            ctx.beginPath();
+            ctx.arc(pos.x + 20, pos.y - 30, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = COLORS.white;
+            ctx.font = '10px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText('📤', pos.x + 20, pos.y - 26);
+        });
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+    }
+};
+
+// ==================== 迭代24: 快捷键更新 ====================
+const ITERATION24_SHORTCUTS = {
+    'i': () => InteractionSystem.toggle(),
+    'I': () => InteractionSystem.toggle(),
+    'c': () => CollaborationSystem.toggle(),
+    'C': () => CollaborationSystem.toggle(),
+    's': () => TaskSharingSystem.toggle(),
+    'S': () => TaskSharingSystem.toggle(),
+    'Alt-s': () => PersistenceSystem.save()
+};
+
+// 合并快捷键
+Object.assign(KEYBOARD_SHORTCUTS, ITERATION24_SHORTCUTS);
+
+// ==================== 按钮更新 ====================
+// 更新 DOMContentLoaded 以添加新按钮
+const originalDOMReady = document.addEventListener('DOMContentLoaded', () => {
+    // 原有代码...
+    const toolbar = document.querySelector('.status-bar');
+    if (toolbar) {
+        // ...原有按钮
+        
+        // 互动按钮
+        const interactBtn = document.createElement('button');
+        interactBtn.id = 'interact-toggle';
+        interactBtn.className = 'sound-btn';
+        interactBtn.textContent = '💬';
+        interactBtn.title = '角色互动 (I)';
+        interactBtn.onclick = () => InteractionSystem.toggle();
+        toolbar.insertBefore(interactBtn, toolbar.children[toolbar.children.length - 1]);
+        
+        // 协作按钮
+        const collabBtn = document.createElement('button');
+        collabBtn.id = 'collab-toggle';
+        collabBtn.className = 'sound-btn';
+        collabBtn.textContent = '🔗';
+        collabBtn.title = '团队协作 (C)';
+        collabBtn.onclick = () => CollaborationSystem.toggle();
+        toolbar.insertBefore(collabBtn, toolbar.children[toolbar.children.length - 1]);
+        
+        // 任务共享按钮
+        const shareBtn = document.createElement('button');
+        shareBtn.id = 'share-toggle';
+        shareBtn.className = 'sound-btn';
+        shareBtn.textContent = '📤';
+        shareBtn.title = '任务共享 (S)';
+        shareBtn.onclick = () => TaskSharingSystem.toggle();
+        toolbar.insertBefore(shareBtn, toolbar.children[toolbar.children.length - 1]);
+        
+        // 保存按钮
+        const saveBtn = document.createElement('button');
+        saveBtn.id = 'save-toggle';
+        saveBtn.className = 'sound-btn';
+        saveBtn.textContent = '💾';
+        saveBtn.title = '保存设置 (Alt+S)';
+        saveBtn.onclick = () => PersistenceSystem.save();
+        toolbar.insertBefore(saveBtn, toolbar.children[toolbar.children.length - 1]);
+    }
+});
+
+// ==================== 更新渲染循环 ====================
+// 在主渲染循环中添加新系统的绘制
+const originalRender = render;
+render = function() {
+    // 原有渲染
+    originalRender();
+    
+    // 新系统渲染
+    if (InteractionSystem.show) InteractionSystem.draw();
+    if (CollaborationSystem.show) CollaborationSystem.draw();
+    if (TaskSharingSystem.show) TaskSharingSystem.draw();
+};
+
+// ==================== 初始化时加载数据 ====================
+const originalInit = init;
+init = function() {
+    originalInit();
+    
+    // 加载保存的数据
+    PersistenceSystem.load();
+    
+    // 启动自动保存
+    PersistenceSystem.startAutoSave();
+    
+    console.log('🔄 第24次迭代功能已加载');
+};
+
 // ==================== 初始化完成 ====================
 window.onload = init;
