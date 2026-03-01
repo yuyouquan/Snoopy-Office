@@ -6881,12 +6881,356 @@ handleClick = function(e) {
     originalHandleClick29(e);
 };
 
+// ==================== 角色情感系统 (Iteration 31) ====================
+const EmotionSystem = {
+    show: false,
+    emotions: ['happy', 'neutral', 'tired', 'stressed', 'excited', 'focused'],
+    characterEmotions: {},
+    
+    // 每个角色当前情感
+    getEmotion(charId) {
+        return this.characterEmotions[charId] || 'neutral';
+    },
+    
+    // 根据状态自动更新情感
+    updateEmotion(char) {
+        const taskLength = char.task?.length || 0;
+        const progress = char.progress || 0;
+        
+        let emotion = 'neutral';
+        
+        if (progress > 80) {
+            emotion = Math.random() > 0.5 ? 'happy' : 'excited';
+        } else if (progress > 50) {
+            emotion = 'focused';
+        } else if (taskLength > 30) {
+            emotion = Math.random() > 0.7 ? 'stressed' : 'tired';
+        } else if (char.status === 'idle') {
+            emotion = Math.random() > 0.5 ? 'happy' : 'neutral';
+        }
+        
+        this.characterEmotions[char.id] = emotion;
+        return emotion;
+    },
+    
+    // 获取情感emoji
+    getEmoji(emotion) {
+        const emojis = {
+            happy: '😊',
+            neutral: '😐',
+            tired: '😴',
+            stressed: '😰',
+            excited: '🤩',
+            focused: '🎯'
+        };
+        return emojis[emotion] || '😐';
+    },
+    
+    // 获取情感颜色
+    getColor(emotion) {
+        const colors = {
+            happy: COLORS.yellow,
+            neutral: COLORS.lightGray,
+            tired: COLORS.indigo,
+            stressed: COLORS.red,
+            excited: COLORS.orange,
+            focused: COLORS.green
+        };
+        return colors[emotion] || COLORS.lightGray;
+    },
+    
+    // 绘制情感指示器
+    drawEmotionIndicator(ctx, x, y, char) {
+        const emotion = this.getEmotion(char.id);
+        const emoji = this.getEmoji(emotion);
+        const color = this.getColor(emotion);
+        
+        // 绘制情感气泡
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x + 20, y - 5, 10, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 绘制emoji
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(emoji, x + 20, y - 1);
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`💭 情感显示: ${this.show ? '开启' : '关闭'}`);
+    }
+};
+
+// ==================== AI任务建议系统 (Iteration 31) ====================
+const AITaskAdvisor = {
+    show: false,
+    suggestions: [],
+    history: [],
+    
+    // 基于角色历史生成建议
+    generateSuggestions() {
+        const suggestions = [];
+        
+        characters.forEach(char => {
+            const historyLength = char.history?.length || 0;
+            const avgProgress = char.progress || 0;
+            
+            // 基于历史任务数量建议
+            if (historyLength < 3) {
+                suggestions.push({
+                    charId: char.id,
+                    charName: char.name,
+                    type: '新人指导',
+                    text: `欢迎新成员 ${char.name}！建议分配简单任务熟悉环境`,
+                    priority: 'high'
+                });
+            }
+            
+            // 基于效率建议
+            if (avgProgress < 30 && char.status === 'working') {
+                suggestions.push({
+                    charId: char.id,
+                    charName: char.name,
+                    type: '效率优化',
+                    text: `${char.name} 进度较慢，建议简化任务或增加资源`,
+                    priority: 'medium'
+                });
+            }
+            
+            // 基于工作时长建议休息
+            if (avgProgress > 60 && Math.random() > 0.6) {
+                suggestions.push({
+                    charId: char.id,
+                    charName: char.name,
+                    type: '关怀建议',
+                    text: `${char.name} 工作高效！建议短暂休息保持状态`,
+                    priority: 'low'
+                });
+            }
+        });
+        
+        // 团队协作建议
+        const workingCount = characters.filter(c => c.status === 'working').length;
+        if (workingCount > 6) {
+            suggestions.push({
+                charId: 'team',
+                charName: '团队',
+                type: '协作建议',
+                text: '多个任务并行中，建议优先处理高优先级任务',
+                priority: 'medium'
+            });
+        }
+        
+        this.suggestions = suggestions.sort((a, b) => {
+            const priorityOrder = { high: 0, medium: 1, low: 2 };
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+        });
+        
+        return suggestions;
+    },
+    
+    // 绘制建议面板
+    draw() {
+        if (!this.show || this.suggestions.length === 0) return;
+        
+        const panelW = 280;
+        const panelH = Math.min(400, 80 + this.suggestions.length * 70);
+        const panelX = canvas.width - panelW - 20;
+        const panelY = 20;
+        
+        // 面板背景
+        ctx.fillStyle = ThemeSystem.themes[ThemeSystem.current].panel;
+        ctx.strokeStyle = ThemeSystem.themes[ThemeSystem.current].border;
+        ctx.lineWidth = 2;
+        roundRect(ctx, panelX, panelY, panelW, panelH, 8);
+        ctx.fill();
+        ctx.stroke();
+        
+        // 标题
+        ctx.fillStyle = ThemeSystem.themes[ThemeSystem.current].text;
+        ctx.font = 'bold 14px "Press Start 2P", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('🤖 AI 任务建议', panelX + 15, panelY + 30);
+        
+        // 建议列表
+        let y = panelY + 50;
+        this.suggestions.slice(0, 5).forEach((sug, i) => {
+            const priorityColors = {
+                high: COLORS.red,
+                medium: COLORS.orange,
+                low: COLORS.green
+            };
+            
+            // 优先级指示
+            ctx.fillStyle = priorityColors[sug.priority];
+            ctx.beginPath();
+            ctx.arc(panelX + 20, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 角色名和类型
+            ctx.fillStyle = ThemeSystem.themes[ThemeSystem.current].text;
+            ctx.font = '10px sans-serif';
+            ctx.fillText(`${sug.charName} - ${sug.type}`, panelX + 32, y - 3);
+            
+            // 建议文本
+            ctx.fillStyle = ThemeSystem.themes[ThemeSystem.current].text + 'aa';
+            ctx.font = '9px sans-serif';
+            const text = sug.text.length > 35 ? sug.text.slice(0, 35) + '...' : sug.text;
+            ctx.fillText(text, panelX + 15, y + 12);
+            
+            y += 65;
+        });
+    },
+    
+    toggle() {
+        if (!this.show) {
+            this.generateSuggestions();
+        }
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`🤖 AI建议: ${this.show ? '开启' : '关闭'}`);
+    }
+};
+
+// ==================== AR/WebXR支持框架 (Iteration 31) ====================
+const ARSystem = {
+    supported: false,
+    session: null,
+    mode: 'none', // none, vr, ar
+    
+    init() {
+        // 检测WebXR支持
+        if ('xr' in navigator) {
+            navigator.xr.isSessionSupported('immersive-vr').then((vrSupported) => {
+                navigator.xr.isSessionSupported('immersive-ar').then((arSupported) => {
+                    this.supported = arSupported || vrSupported;
+                    console.log(`🥽 XR支持: VR=${vrSupported}, AR=${arSupported}`);
+                });
+            });
+        }
+    },
+    
+    // 启动AR模式
+    async startAR() {
+        if (!this.supported) {
+            console.log('🥽 WebXR 不支持');
+            this.showARNotSupported();
+            return;
+        }
+        
+        try {
+            this.session = await navigator.xr.requestSession('immersive-ar', {
+                requiredFeatures: ['local-floor'],
+                optionalFeatures: ['dom-overlay']
+            });
+            
+            this.mode = 'ar';
+            console.log('🥽 AR会话已启动');
+            
+            this.session.addEventListener('end', () => {
+                this.mode = 'none';
+                this.session = null;
+            });
+            
+        } catch (e) {
+            console.error('AR启动失败:', e);
+            this.showARNotSupported();
+        }
+    },
+    
+    // 显示AR不支持提示
+    showARNotSupported() {
+        const msg = document.createElement('div');
+        msg.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: ${ThemeSystem.themes[ThemeSystem.current].panel};
+            padding: 20px; border-radius: 10px; border: 2px solid ${COLORS.red};
+            color: ${ThemeSystem.themes[ThemeSystem.current].text}; z-index: 10000;
+            font-family: sans-serif; text-align: center;
+        `;
+        msg.innerHTML = `
+            <h3>🥽 AR模式</h3>
+            <p>您的设备不支持WebXR AR</p>
+            <p>请使用支持的设备体验AR</p>
+            <button onclick="this.parentElement.remove()" style="margin-top:10px;padding:8px 20px;cursor:pointer">关闭</button>
+        `;
+        document.body.appendChild(msg);
+    },
+    
+    // 退出AR
+    async stopAR() {
+        if (this.session) {
+            await this.session.end();
+            this.mode = 'none';
+        }
+    },
+    
+    // 获取AR按钮文本
+    getButtonText() {
+        if (!this.supported) return '🥽 AR (不支持)';
+        return this.mode === 'none' ? '🥽 启动AR' : '🥽 退出AR';
+    }
+};
+
+// 初始化AR系统
+ARSystem.init();
+
+// ==================== 快捷键 ====================
+const KEYBOARD_SHORTCUTS_31 = {
+    'e': () => EmotionSystem.toggle(),
+    'E': () => EmotionSystem.toggle(),
+    'a': () => AITaskAdvisor.toggle(),
+    'A': () => AITaskAdvisor.toggle(),
+    'x': () => ARSystem.supported ? (ARSystem.mode === 'none' ? ARSystem.startAR() : ARSystem.stopAR()) : ARSystem.showARNotSupported(),
+    'X': () => ARSystem.supported ? (ARSystem.mode === 'none' ? ARSystem.startAR() : ARSystem.stopAR()) : ARSystem.showARNotSupported()
+};
+
+// 合并快捷键
+Object.assign(KEYBOARD_SHORTCUTS, KEYBOARD_SHORTCUTS_31);
+
+// 修改渲染函数包含新系统
+const originalRender31 = render;
+render = function() {
+    originalRender31();
+    if (EmotionSystem.show) {
+        characters.forEach(char => {
+            EmotionSystem.updateEmotion(char);
+        });
+    }
+    AITaskAdvisor.draw();
+};
+
+// 修改点击处理添加AR按钮支持
+const originalHandleClick31 = handleClick;
+handleClick = function(e) {
+    // AR按钮点击区域 (右下角)
+    const arBtnX = canvas.width - 100;
+    const arBtnY = canvas.height - 50;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    
+    if (x > arBtnX && x < arBtnX + 80 && y > arBtnY && y < arBtnY + 30) {
+        if (ARSystem.supported) {
+            ARSystem.mode === 'none' ? ARSystem.startAR() : ARSystem.stopAR();
+        } else {
+            ARSystem.showARNotSupported();
+        }
+        return;
+    }
+    
+    originalHandleClick31(e);
+};
+
 // ==================== 初始化 ====================
-const originalInit29 = init;
+const originalInit31 = init;
 init = function() {
-    originalInit29();
-    TeamCollaboration.init();
-    DecorSystem.decorations = DecorSystem.themes.none.items;
-    console.log('🎮 迭代29功能已加载: 装饰系统 | 团队协作 | 云端同步');
-    console.log('⌨️ 新快捷键: D 装饰 | Y 主题 | C 协作 | Z 云端');
+    originalInit31();
+    EmotionSystem.show = false;
+    AITaskAdvisor.generateSuggestions();
+    console.log('🎮 迭代31功能已加载: 情感系统 | AI建议 | AR支持');
+    console.log('⌨️ 新快捷键: E 情感 | A AI建议 | X AR模式');
 };
