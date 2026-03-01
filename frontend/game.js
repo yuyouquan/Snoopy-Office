@@ -668,12 +668,39 @@ function drawCharacters() {
         ctx.ellipse(x, y + 18, 12, 6, 0, 0, Math.PI * 2);
         ctx.fill();
         
+        // 搜索高亮效果
+        if (char.highlighted) {
+            ctx.strokeStyle = COLORS.yellow;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, 25, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // 脉冲动画
+            const pulse = Math.sin(Date.now() / 200) * 5 + 30;
+            ctx.strokeStyle = `rgba(255, 236, 39, ${0.5 + Math.sin(Date.now() / 200) * 0.3})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, pulse, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        
         // 绘制角色
         drawPixelCharacter(x + (char.offsetX || 0), y + (char.offsetY || 0), char);
         
         // 绘制任务气泡
         if (char.status === 'working') {
             drawTaskBubble(x, y - 35, char);
+        }
+        
+        // 搜索匹配标签
+        if (char.searched && !char.highlighted) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillRect(x - 10, y + 20, 20, 12);
+            ctx.fillStyle = COLORS.black;
+            ctx.font = '8px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🔍', x, y + 28);
         }
     });
 }
@@ -1355,8 +1382,96 @@ function toggleHeatmap() {
     console.log(`🗺️ 热力图: ${enabled ? '开启' : '关闭'}`);
 }
 
+// 搜索角色
+let searchResults = [];
+let currentSearchIndex = -1;
+
+function searchCharacters(query) {
+    searchResults = [];
+    currentSearchIndex = -1;
+    
+    if (!query || query.trim() === '') {
+        // 清除搜索状态
+        characters.forEach(c => {
+            c.searched = false;
+            c.highlighted = false;
+        });
+        return;
+    }
+    
+    const lowerQuery = query.toLowerCase();
+    
+    // 搜索匹配的角色
+    characters.forEach((char, index) => {
+        const matchName = char.name.toLowerCase().includes(lowerQuery);
+        const matchRole = char.role.toLowerCase().includes(lowerQuery);
+        const matchTask = char.task.toLowerCase().includes(lowerQuery);
+        const matchZone = (ZONES[char.zone]?.name || '').toLowerCase().includes(lowerQuery);
+        
+        if (matchName || matchRole || matchTask || matchZone) {
+            char.searched = true;
+            char.searchMatch = matchName ? 'name' : matchRole ? 'role' : matchTask ? 'task' : 'zone';
+            searchResults.push(index);
+        } else {
+            char.searched = false;
+            char.highlighted = false;
+        }
+    });
+    
+    // 自动高亮第一个结果
+    if (searchResults.length > 0) {
+        currentSearchIndex = 0;
+        characters[searchResults[0]].highlighted = true;
+        // 移动镜头到第一个匹配角色
+        const char = characters[searchResults[0]];
+        const pos = getCharacterPosition(char);
+        targetCameraX = pos.x - 400 + 16;
+        targetCameraY = pos.y - 300 + 16;
+    }
+    
+    console.log(`🔍 搜索 "${query}": 找到 ${searchResults.length} 个结果`);
+    AudioSystem.playClick();
+}
+
+// 搜索结果导航
+function navigateSearchResults(direction) {
+    if (searchResults.length === 0) return;
+    
+    // 清除之前的高亮
+    if (currentSearchIndex >= 0 && currentSearchIndex < searchResults.length) {
+        characters[searchResults[currentSearchIndex]].highlighted = false;
+    }
+    
+    // 更新索引
+    currentSearchIndex += direction;
+    if (currentSearchIndex >= searchResults.length) currentSearchIndex = 0;
+    if (currentSearchIndex < 0) currentSearchIndex = searchResults.length - 1;
+    
+    // 高亮新结果
+    const newChar = characters[searchResults[currentSearchIndex]];
+    newChar.highlighted = true;
+    
+    // 移动镜头
+    const pos = getCharacterPosition(newChar);
+    targetCameraX = pos.x - 400 + 16;
+    targetCameraY = pos.y - 300 + 16;
+    
+    // 显示详情面板
+    showCharacterPanel(newChar);
+    
+    AudioSystem.playSelect();
+}
+
+// 搜索框快捷键
+function focusSearch() {
+    document.getElementById('search-box')?.focus();
+}
+
 // 快捷键绑定
 KEYBOARD_SHORTCUTS['h'] = toggleHeatmap;
 KEYBOARD_SHORTCUTS['H'] = toggleHeatmap;
+KEYBOARD_SHORTCUTS['/'] = focusSearch;
+KEYBOARD_SHORTCUTS['n'] = () => navigateSearchResults(1);  // 下一个
+KEYBOARD_SHORTCUTS['p'] = () => navigateSearchResults(-1); // 上一个
 
 window.onload = init;

@@ -13,6 +13,7 @@
             <div class="status-bar">
                 <span id="time">🕐 --:--</span>
                 <span id="connection">🟢 已连接</span>
+                <input type="text" id="search-box" placeholder="🔍 搜索角色..." oninput="searchCharacters(this.value)" title="搜索角色 (/)">
                 <button id="refresh-btn" class="sound-btn" onclick="refreshStatus()" title="刷新数据 (Space)">🔄</button>
                 <button id="realtime-toggle" class="sound-btn" onclick="toggleRealTimeData()" title="切换实时数据 (R)">📡</button>
                 <button id="heatmap-toggle" class="sound-btn" onclick="toggleHeatmap()" title="切换热力图 (H)">🗺️</button>

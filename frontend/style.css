@@ -56,6 +56,27 @@ h1 {
     font-size: 0.9rem;
 }
 
+#search-box {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    width: 140px;
+    transition: border-color 0.2s, width 0.2s;
+}
+
+#search-box:focus {
+    outline: none;
+    border-color: var(--accent);
+    width: 180px;
+}
+
+#search-box::placeholder {
+    color: var(--text-secondary);
+}
+
 .sound-btn {
     background: var(--bg-dark);
     border: 1px solid var(--border);
