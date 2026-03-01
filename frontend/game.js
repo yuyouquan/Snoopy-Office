@@ -404,6 +404,9 @@ function init() {
     // 绑定键盘事件
     document.addEventListener('keydown', handleKeyboard);
     
+    // 鼠标滚轮缩放 (Iteration 18)
+    canvas.addEventListener('wheel', (e) => ZoomSystem.handleWheel(e), { passive: false });
+    
     // 移动端触摸支持（改进）
     canvas.addEventListener('touchstart', handleTouch, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -603,6 +606,18 @@ function render() {
     
     // 绘制任务通知
     TaskNotification.draw(ctx);
+    
+    // 绘制小地图 (Iteration 18)
+    drawMiniMap();
+    
+    // 绘制效率排名面板 (Iteration 18)
+    drawRankingPanel();
+    
+    // 更新缩放系统
+    ZoomSystem.update();
+    
+    // 更新跟随系统
+    FollowSystem.update();
 }
 
 function drawZones() {
@@ -1467,11 +1482,264 @@ function focusSearch() {
     document.getElementById('search-box')?.focus();
 }
 
+// ==================== 缩放系统 (Iteration 18) ====================
+const ZoomSystem = {
+    scale: 1,
+    minScale: 0.5,
+    maxScale: 2,
+    targetScale: 1,
+    
+    zoomIn() {
+        this.targetScale = Math.min(this.maxScale, this.targetScale + 0.25);
+    },
+    
+    zoomOut() {
+        this.targetScale = Math.max(this.minScale, this.targetScale - 0.25);
+    },
+    
+    reset() {
+        this.targetScale = 1;
+        cameraX = cameraY = targetCameraX = targetCameraY = 0;
+    },
+    
+    update() {
+        // 平滑缩放
+        if (Math.abs(this.scale - this.targetScale) > 0.01) {
+            this.scale += (this.targetScale - this.scale) * 0.1;
+        }
+    },
+    
+    // 鼠标滚轮缩放
+    handleWheel(e) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+            this.zoomIn();
+        } else {
+            this.zoomOut();
+        }
+    }
+};
+
+// 角色跟随系统 (Iteration 18)
+const FollowSystem = {
+    followedCharacter: null,
+    
+    follow(charId) {
+        this.followedCharacter = charId;
+        const char = characters.find(c => c.id === charId);
+        if (char) {
+            console.log(`👀 跟随角色: ${char.name}`);
+            AudioSystem.playClick();
+        }
+    },
+    
+    unfollow() {
+        if (this.followedCharacter) {
+            console.log(`👀 取消跟随`);
+            AudioSystem.playClick();
+        }
+        this.followedCharacter = null;
+    },
+    
+    update() {
+        if (!this.followedCharacter) return;
+        
+        const char = characters.find(c => c.id === this.followedCharacter);
+        if (!char) {
+            this.followedCharacter = null;
+            return;
+        }
+        
+        const pos = getCharacterPosition(char);
+        // 目标位置：角色在屏幕中心
+        targetCameraX = pos.x - (canvas.width / 2 / ZoomSystem.scale) + 16;
+        targetCameraY = pos.y - (canvas.height / 2 / ZoomSystem.scale) + 16;
+    },
+    
+    isFollowing(charId) {
+        return this.followedCharacter === charId;
+    }
+};
+
+// 角色效率排名系统 (Iteration 18)
+const EfficiencyRanking = {
+    scores: {}, // { charId: score }
+    
+    // 更新角色效率分数
+    updateScore(charId, progress, status) {
+        if (!this.scores[charId]) {
+            this.scores[charId] = 0;
+        }
+        
+        if (status === 'working' && progress > 0) {
+            this.scores[charId] += progress * 0.1;
+        }
+    },
+    
+    // 获取排名
+    getRanking() {
+        return Object.entries(this.scores)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([charId, score], index) => {
+                const char = characters.find(c => c.id === charId);
+                return {
+                    rank: index + 1,
+                    char: char,
+                    score: Math.round(score)
+                };
+            })
+            .filter(r => r.char);
+    },
+    
+    // 重置排名
+    reset() {
+        this.scores = {};
+    }
+};
+
+// 绘制小地图 (Iteration 18)
+function drawMiniMap() {
+    const mapWidth = 150;
+    const mapHeight = 112;
+    const mapX = canvas.width - mapWidth - 10;
+    const mapY = 10;
+    const scaleX = mapWidth / 800;
+    const scaleY = mapHeight / 600;
+    
+    // 背景
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(mapX, mapY, mapWidth, mapHeight);
+    ctx.strokeStyle = '#5f574f';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
+    
+    // 区域
+    Object.entries(ZONES).forEach(([key, zone]) => {
+        ctx.fillStyle = zone.color + '40';
+        ctx.fillRect(
+            mapX + zone.x * scaleX,
+            mapY + zone.y * scaleY,
+            zone.width * scaleX,
+            zone.height * scaleY
+        );
+    });
+    
+    // 角色点
+    characters.forEach(char => {
+        const pos = getCharacterPosition(char);
+        const px = mapX + pos.x * scaleX;
+        const py = mapY + pos.y * scaleY;
+        
+        // 跟随状态
+        if (FollowSystem.isFollowing(char.id)) {
+            ctx.fillStyle = COLORS.yellow;
+            ctx.beginPath();
+            ctx.arc(px, py, 4, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.fillStyle = char.color;
+            ctx.fillRect(px - 2, py - 2, 4, 4);
+        }
+    });
+    
+    // 摄像机视野框
+    const camX = mapX + cameraX * scaleX;
+    const camY = mapY + cameraY * scaleY;
+    const camW = (canvas.width / ZoomSystem.scale) * scaleX;
+    const camH = (canvas.height / ZoomSystem.scale) * scaleY;
+    ctx.strokeStyle = COLORS.white;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(camX, camY, camW, camH);
+    
+    // 小地图标题
+    ctx.fillStyle = COLORS.lightGray;
+    ctx.font = '10px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.fillText('🗺️ 地图', mapX + mapWidth / 2, mapY + mapHeight + 12);
+}
+
+// 绘制效率排名面板 (Iteration 18)
+function drawRankingPanel() {
+    if (!showRanking) return;
+    
+    const panelWidth = 180;
+    const panelHeight = 200;
+    const panelX = 10;
+    const panelY = 10;
+    
+    // 背景
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+    ctx.strokeStyle = COLORS.green;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+    
+    // 标题
+    ctx.fillStyle = COLORS.green;
+    ctx.font = 'bold 14px "Courier New"';
+    ctx.textAlign = 'left';
+    ctx.fillText('🏆 效率排名', panelX + 10, panelY + 25);
+    
+    // 排名列表
+    const ranking = EfficiencyRanking.getRanking();
+    ranking.forEach((item, index) => {
+        const y = panelY + 45 + index * 28;
+        
+        // 排名颜色
+        const rankColors = [COLORS.yellow, COLORS.lightGray, COLORS.brown];
+        ctx.fillStyle = rankColors[index] || COLORS.white;
+        
+        // 排名
+        ctx.font = 'bold 12px "Courier New"';
+        ctx.fillText(`${item.rank}.`, panelX + 15, y);
+        
+        // 角色名
+        ctx.font = '11px "Courier New"';
+        ctx.fillStyle = COLORS.white;
+        ctx.fillText(item.char.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '').slice(0, 8), panelX + 35, y);
+        
+        // 分数
+        ctx.fillStyle = COLORS.green;
+        ctx.textAlign = 'right';
+        ctx.fillText(item.score + '分', panelX + panelWidth - 15, y);
+        ctx.textAlign = 'left';
+    });
+}
+
 // 快捷键绑定
 KEYBOARD_SHORTCUTS['h'] = toggleHeatmap;
 KEYBOARD_SHORTCUTS['H'] = toggleHeatmap;
 KEYBOARD_SHORTCUTS['/'] = focusSearch;
 KEYBOARD_SHORTCUTS['n'] = () => navigateSearchResults(1);  // 下一个
 KEYBOARD_SHORTCUTS['p'] = () => navigateSearchResults(-1); // 上一个
+KEYBOARD_SHORTCUTS['='] = () => ZoomSystem.zoomIn();      // 放大
+KEYBOARD_SHORTCUTS['+'] = () => ZoomSystem.zoomIn();      // 放大
+KEYBOARD_SHORTCUTS['-'] = () => ZoomSystem.zoomOut();     // 缩小
+KEYBOARD_SHORTCUTS['0'] = () => ZoomSystem.reset();       // 重置缩放
+KEYBOARD_SHORTCUTS['f'] = () => {
+    if (selectedCharacter) {
+        FollowSystem.follow(selectedCharacter);
+    }
+};  // 跟随选中角色
+KEYBOARD_SHORTCUTS['F'] = () => {
+    if (selectedCharacter) {
+        FollowSystem.follow(selectedCharacter);
+    }
+};
+KEYBOARD_SHORTCUTS['v'] = () => {
+    FollowSystem.unfollow();
+};  // 取消跟随
+
+// 切换排名面板显示
+let showRanking = false;
+function toggleRanking() {
+    showRanking = !showRanking;
+    AudioSystem.playClick();
+    console.log(`🏆 效率排名: ${showRanking ? '显示' : '隐藏'}`);
+}
+
+KEYBOARD_SHORTCUTS['l'] = toggleRanking;
+KEYBOARD_SHORTCUTS['L'] = toggleRanking;
 
 window.onload = init;
