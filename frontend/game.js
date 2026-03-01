@@ -87,6 +87,182 @@ const ZONES = {
     server: { x: 300, y: 400, width: 150, height: 150, name: '服务器区', color: COLORS.darkGray }
 };
 
+// ==================== 主题系统 ====================
+const ThemeSystem = {
+    current: 'dark',
+    themes: {
+        dark: {
+            name: '🌙 暗黑主题',
+            bg: '#1d1d21',
+            panel: '#2d2d35',
+            border: '#3d3d4a',
+            text: '#fff1e8',
+            accent: '#00e436'
+        },
+        light: {
+            name: '☀️ 明亮主题',
+            bg: '#f0f0f0',
+            panel: '#ffffff',
+            border: '#cccccc',
+            text: '#333333',
+            accent: '#008751'
+        }
+    },
+    
+    toggle() {
+        this.current = this.current === 'dark' ? 'light' : 'dark';
+        this.apply();
+        AudioSystem.playClick();
+        console.log(`🎨 主题: ${this.themes[this.current].name}`);
+    },
+    
+    apply() {
+        const t = this.themes[this.current];
+        document.documentElement.style.setProperty('--bg-dark', t.bg);
+        document.documentElement.style.setProperty('--bg-panel', t.panel);
+        document.documentElement.style.setProperty('--border', t.border);
+        document.documentElement.style.setProperty('--text-primary', t.text);
+        document.documentElement.style.setProperty('--accent', t.accent);
+        
+        // 更新按钮状态
+        const btn = document.getElementById('theme-toggle');
+        if (btn) btn.textContent = this.current === 'dark' ? '🌙' : '☀️';
+    }
+};
+
+// ==================== 时间系统 ====================
+const TimeOfDaySystem = {
+    currentPeriod: 'morning', // morning, afternoon, evening, night
+    periods: {
+        morning: { name: '🌅 早晨', start: 6, end: 12, brightness: 1.0, tint: null },
+        afternoon: { name: '☀️ 下午', start: 12, end: 18, brightness: 1.0, tint: null },
+        evening: { name: '🌆 傍晚', start: 18, end: 21, brightness: 0.8, tint: 'rgba(255, 150, 50, 0.1)' },
+        night: { name: '🌙 夜晚', start: 21, end: 6, brightness: 0.5, tint: 'rgba(0, 0, 50, 0.3)' }
+    },
+    
+    update() {
+        const hour = new Date().getHours();
+        for (const [period, config] of Object.entries(this.periods)) {
+            if (period === 'night' && (hour >= 21 || hour < 6)) {
+                this.currentPeriod = period;
+                break;
+            }
+            if (hour >= config.start && hour < config.end) {
+                this.currentPeriod = period;
+                break;
+            }
+        }
+    },
+    
+    getBrightness() {
+        return this.periods[this.currentPeriod].brightness;
+    },
+    
+    getTint() {
+        return this.periods[this.currentPeriod].tint;
+    },
+    
+    cycle() {
+        const order = ['morning', 'afternoon', 'evening', 'night'];
+        const idx = order.indexOf(this.currentPeriod);
+        this.currentPeriod = order[(idx + 1) % 4];
+        AudioSystem.playClick();
+        console.log(`🕐 时间: ${this.periods[this.currentPeriod].name}`);
+    }
+};
+
+// ==================== 天气系统 ====================
+const WeatherSystem = {
+    current: 'none', // none, rain, snow, sparkle
+    particles: [],
+    active: false,
+    types: {
+        none: { name: '☁️ 无', particleCount: 0 },
+        rain: { name: '🌧️ 下雨', particleCount: 100, color: '#29adff', speed: 8 },
+        snow: { name: '❄️ 下雪', particleCount: 80, color: '#fff1e8', speed: 2 },
+        sparkle: { name: '✨ 星星', particleCount: 30, color: '#ffec27', speed: 0.5 }
+    },
+    
+    toggle() {
+        const order = ['none', 'rain', 'snow', 'sparkle'];
+        const idx = order.indexOf(this.current);
+        this.current = order[(idx + 1) % 4];
+        
+        if (this.current === 'none') {
+            this.particles = [];
+            this.active = false;
+        } else {
+            this.initParticles();
+            this.active = true;
+        }
+        
+        AudioSystem.playClick();
+        console.log(`🌤️ 天气: ${this.types[this.current].name}`);
+        
+        // 更新按钮
+        const btn = document.getElementById('weather-toggle');
+        if (btn) btn.textContent = this.types[this.current].name.split(' ')[0];
+    },
+    
+    initParticles() {
+        this.particles = [];
+        const config = this.types[this.current];
+        for (let i = 0; i < config.particleCount; i++) {
+            this.particles.push({
+                x: Math.random() * 800,
+                y: Math.random() * 600,
+                size: this.current === 'snow' ? Math.random() * 3 + 1 : 2,
+                speed: config.speed * (0.5 + Math.random() * 0.5),
+                wobble: Math.random() * Math.PI * 2
+            });
+        }
+    },
+    
+    update() {
+        if (!this.active) return;
+        
+        const config = this.types[this.current];
+        this.particles.forEach(p => {
+            if (this.current === 'rain') {
+                p.y += p.speed;
+                p.x -= 1;
+            } else if (this.current === 'snow') {
+                p.y += p.speed;
+                p.wobble += 0.05;
+                p.x += Math.sin(p.wobble) * 0.5;
+            } else if (this.current === 'sparkle') {
+                p.wobble += 0.1;
+                p.size = 2 + Math.sin(p.wobble) * 1.5;
+            }
+            
+            // 边界重置
+            if (p.y > 600) p.y = -10;
+            if (p.x < 0) p.x = 800;
+        });
+    },
+    
+    draw(ctx) {
+        if (!this.active) return;
+        
+        const config = this.types[this.current];
+        ctx.fillStyle = config.color;
+        
+        this.particles.forEach(p => {
+            if (this.current === 'rain') {
+                ctx.fillRect(p.x, p.y, 1, p.size * 3);
+            } else if (this.current === 'snow') {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (this.current === 'sparkle') {
+                ctx.globalAlpha = 0.5 + Math.sin(p.wobble) * 0.5;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+                ctx.globalAlpha = 1;
+            }
+        });
+    }
+};
+
 // 角色定义 - 完整版（10个角色）
 const CHARACTERS = [
     { id: 'boss', name: '👔 老板', role: '用户', zone: 'boss', color: COLORS.brown, task: '下达指令', progress: 100, status: 'idle', history: [] },
@@ -461,8 +637,14 @@ function init() {
     // 初始统计更新
     updateStats();
     
+    // 初始化主题系统 (Iteration 19)
+    ThemeSystem.apply();
+    
+    // 初始化时间系统 (Iteration 19)
+    TimeOfDaySystem.update();
+    
     console.log('🎮 Snoopy-Office 已启动');
-    console.log('⌨️ 快捷键: 1-8 选择角色, ESC 关闭, +/- 调整速度, R 切换实时数据');
+    console.log('⌨️ 快捷键: 1-8 选择角色, ESC 关闭, +/- 调整速度, R 切换实时数据, T 主题, M 时间, W 天气');
 }
 
 // ==================== 任务通知系统 ====================
@@ -589,8 +771,19 @@ function render() {
     // 绘制区域（带热力图效果）
     drawZones();
     
+    // 应用时间系统色调
+    const tint = TimeOfDaySystem.getTint();
+    if (tint) {
+        ctx.fillStyle = tint;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    
     // 绘制角色
     drawCharacters();
+    
+    // 绘制天气粒子 (Iteration 19)
+    WeatherSystem.update();
+    WeatherSystem.draw(ctx);
     
     // 绘制烟花
     FireworkSystem.update();
@@ -612,6 +805,9 @@ function render() {
     
     // 绘制效率排名面板 (Iteration 18)
     drawRankingPanel();
+    
+    // 绘制时间/天气状态指示 (Iteration 19)
+    drawStatusIndicators();
     
     // 更新缩放系统
     ZoomSystem.update();
@@ -1741,5 +1937,36 @@ function toggleRanking() {
 
 KEYBOARD_SHORTCUTS['l'] = toggleRanking;
 KEYBOARD_SHORTCUTS['L'] = toggleRanking;
+
+// 主题切换 (Iteration 19)
+KEYBOARD_SHORTCUTS['t'] = () => ThemeSystem.toggle();
+KEYBOARD_SHORTCUTS['T'] = () => ThemeSystem.toggle();
+
+// 时间切换 (Iteration 19)
+KEYBOARD_SHORTCUTS['m'] = () => TimeOfDaySystem.cycle();
+
+// 天气切换 (Iteration 19)
+KEYBOARD_SHORTCUTS['w'] = () => WeatherSystem.toggle();
+KEYBOARD_SHORTCUTS['W'] = () => WeatherSystem.toggle();
+
+// ==================== 状态指示器绘制 ====================
+function drawStatusIndicators() {
+    const padding = 10;
+    const iconSize = 20;
+    let x = canvas.width - iconSize - padding;
+    const y = padding + 20; // 在小地图上方
+    
+    // 绘制时间指示
+    ctx.font = '16px "Courier New"';
+    const timeIcon = TimeOfDaySystem.periods[TimeOfDaySystem.currentPeriod].name.split(' ')[0];
+    ctx.fillStyle = COLORS.white;
+    ctx.fillText(timeIcon, x - 60, y);
+    
+    // 绘制天气指示
+    if (WeatherSystem.current !== 'none') {
+        const weatherIcon = WeatherSystem.types[WeatherSystem.current].name.split(' ')[0];
+        ctx.fillText(weatherIcon, x - 100, y);
+    }
+}
 
 window.onload = init;

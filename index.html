@@ -18,6 +18,9 @@
                 <button id="realtime-toggle" class="sound-btn" onclick="toggleRealTimeData()" title="切换实时数据 (R)">📡</button>
                 <button id="heatmap-toggle" class="sound-btn" onclick="toggleHeatmap()" title="切换热力图 (H)">🗺️</button>
                 <button id="ranking-toggle" class="sound-btn" onclick="toggleRanking()" title="切换排名面板 (L)">🏆</button>
+                <button id="theme-toggle" class="sound-btn" onclick="ThemeSystem.toggle()" title="切换主题 (T)">🌙</button>
+                <button id="time-toggle" class="sound-btn" onclick="TimeOfDaySystem.cycle()" title="切换时间 (M)">🌅</button>
+                <button id="weather-toggle" class="sound-btn" onclick="WeatherSystem.toggle()" title="切换天气 (W)">☁️</button>
                 <button id="sound-toggle" class="sound-btn" onclick="toggleSound()">🔊</button>
                 <button class="sound-btn" onclick="toggleFullscreen()" title="全屏 (F)">🖥️</button>
                 <button class="sound-btn" onclick="exportState()" title="导出状态">📦</button>
@@ -104,7 +107,7 @@
                 <span>✍️ 创作</span>
             </div>
             <div class="shortcuts">
-                <span>⌨️ 快捷键: 1-8选择 | +/-速度 | H热力图 | L排名 | F跟随 | 滚轮缩放 | ESC关闭</span>
+                <span>⌨️ 快捷键: 1-8选择 | +/-速度 | H热力图 | L排名 | T主题 | M时间 | W天气 | F跟随 | 滚轮缩放 | ESC关闭</span>
             </div>
         </footer>
     </div>
