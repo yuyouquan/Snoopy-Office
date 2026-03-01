@@ -6024,6 +6024,31 @@ const DecorSystem = {
                 { type: 'icecream', x: 600, y: 500 },
                 { type: 'beachball', x: 700, y: 550 }
             ]
+        },
+        // ========== Iteration 30 新增 ==========
+        midautumn: { 
+            name: '🌙 中秋节主题', 
+            items: [
+                { type: 'moon', x: 700, y: 60 },
+                { type: 'rabbit', x: 650, y: 80 },
+                { type: 'lantern', x: 100, y: 50 },
+                { type: 'lantern', x: 300, y: 40 },
+                { type: 'lantern', x: 500, y: 50 },
+                { type: 'tangyuan', x: 50, y: 500 },
+                { type: 'tangyuan', x: 80, y: 520 }
+            ]
+        },
+        spring: {
+            name: '🧧 春节主题',
+            items: [
+                { type: 'spring lantern', x: 100, y: 50 },
+                { type: 'spring lantern', x: 300, y: 40 },
+                { type: 'spring lantern', x: 500, y: 50 },
+                { type: 'firecracker', x: 700, y: 550 },
+                { type: 'firecracker', x: 730, y: 540 },
+                { type: 'fu', x: 400, y: 30 },
+                { type: 'fireworks', x: 600, y: 100 }
+            ]
         }
     },
     
@@ -6174,6 +6199,110 @@ const DecorSystem = {
                     ctx.fillRect(dec.x - 4, dec.y, 8, 20);
                     ctx.fillStyle = COLORS.yellow;
                     ctx.beginPath(); ctx.arc(dec.x, dec.y - 5, 4, 0, Math.PI * 2); ctx.fill();
+                    break;
+                // ========== Iteration 30 新增 ==========
+                case 'moon':
+                    // 中秋明月
+                    ctx.fillStyle = '#F5E6A3';
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y, 30, 0, Math.PI * 2); ctx.fill();
+                    // 月亮上的阴影
+                    ctx.fillStyle = '#E8D590';
+                    ctx.beginPath(); ctx.arc(dec.x - 8, dec.y - 5, 5, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(dec.x + 5, dec.y + 8, 3, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(dec.x - 3, dec.y + 12, 4, 0, Math.PI * 2); ctx.fill();
+                    break;
+                case 'rabbit':
+                    // 玉兔
+                    ctx.fillStyle = COLORS.white;
+                    // 身体
+                    ctx.beginPath(); ctx.ellipse(dec.x, dec.y, 12, 10, 0, 0, Math.PI * 2); ctx.fill();
+                    // 头
+                    ctx.beginPath(); ctx.arc(dec.x - 10, dec.y - 5, 8, 0, Math.PI * 2); ctx.fill();
+                    // 耳朵
+                    ctx.beginPath(); ctx.ellipse(dec.x - 14, dec.y - 15, 3, 10, -0.2, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(dec.x - 8, dec.y - 15, 3, 10, 0.2, 0, Math.PI * 2); ctx.fill();
+                    // 眼睛
+                    ctx.fillStyle = COLORS.red;
+                    ctx.beginPath(); ctx.arc(dec.x - 12, dec.y - 6, 2, 0, Math.PI * 2); ctx.fill();
+                    break;
+                case 'lantern':
+                    // 中秋灯笼
+                    ctx.fillStyle = COLORS.red;
+                    ctx.beginPath();
+                    ctx.moveTo(dec.x, dec.y - 15);
+                    ctx.lineTo(dec.x + 15, dec.y - 5);
+                    ctx.lineTo(dec.x + 15, dec.y + 15);
+                    ctx.lineTo(dec.x, dec.y + 25);
+                    ctx.lineTo(dec.x - 15, dec.y + 15);
+                    ctx.lineTo(dec.x - 15, dec.y - 5);
+                    ctx.closePath();
+                    ctx.fill();
+                    // 灯笼光芒
+                    ctx.fillStyle = COLORS.yellow;
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y, 5, 0, Math.PI * 2); ctx.fill();
+                    // 灯笼顶部
+                    ctx.fillStyle = COLORS.brown;
+                    ctx.fillRect(dec.x - 4, dec.y - 20, 8, 5);
+                    break;
+                case 'tangyuan':
+                    // 汤圆
+                    ctx.fillStyle = COLORS.white;
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y, 10, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = COLORS.pink;
+                    ctx.beginPath(); ctx.arc(dec.x - 3, dec.y - 3, 3, 0, Math.PI * 2); ctx.fill();
+                    break;
+                case 'spring lantern':
+                    // 春节灯笼
+                    ctx.fillStyle = COLORS.red;
+                    ctx.fillRect(dec.x - 10, dec.y, 20, 25);
+                    // 金色边缘
+                    ctx.fillStyle = COLORS.yellow;
+                    ctx.fillRect(dec.x - 10, dec.y, 20, 3);
+                    ctx.fillRect(dec.x - 10, dec.y + 22, 20, 3);
+                    // 流苏
+                    ctx.fillStyle = COLORS.red;
+                    ctx.fillRect(dec.x - 2, dec.y + 25, 4, 10);
+                    // 顶部
+                    ctx.fillStyle = COLORS.brown;
+                    ctx.fillRect(dec.x - 5, dec.y - 5, 10, 5);
+                    break;
+                case 'firecracker':
+                    // 鞭炮
+                    ctx.fillStyle = COLORS.red;
+                    ctx.fillRect(dec.x, dec.y, 8, 20);
+                    ctx.fillStyle = COLORS.yellow;
+                    ctx.fillRect(dec.x + 2, dec.y, 2, 20);
+                    // 引线
+                    ctx.strokeStyle = COLORS.brown;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(dec.x + 4, dec.y);
+                    ctx.quadraticCurveTo(dec.x + 10, dec.y - 5, dec.x + 8, dec.y - 10);
+                    ctx.stroke();
+                    break;
+                case 'fu':
+                    // 福字
+                    ctx.fillStyle = COLORS.red;
+                    ctx.fillRect(dec.x - 20, dec.y - 15, 40, 30);
+                    ctx.fillStyle = COLORS.yellow;
+                    ctx.font = 'bold 20px "Noto Sans SC", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('福', dec.x, dec.y + 8);
+                    break;
+                case 'fireworks':
+                    // 烟花
+                    const fwColors = [COLORS.red, COLORS.yellow, COLORS.pink, COLORS.orange];
+                    for (let i = 0; i < 8; i++) {
+                        ctx.strokeStyle = fwColors[i % fwColors.length];
+                        ctx.lineWidth = 2;
+                        const angle = (i * Math.PI) / 4;
+                        ctx.beginPath();
+                        ctx.moveTo(dec.x, dec.y);
+                        ctx.lineTo(dec.x + Math.cos(angle) * 20, dec.y + Math.sin(angle) * 20);
+                        ctx.stroke();
+                    }
+                    ctx.fillStyle = COLORS.white;
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y, 4, 0, Math.PI * 2); ctx.fill();
                     break;
             }
             ctx.restore();
@@ -6361,6 +6490,81 @@ const CloudSyncSystem = {
     cloudData: {},
     autoSync: true,
     syncInterval: 60000, // 1分钟
+    encryptionKey: 'snoopyoffice2026', // 默认加密密钥
+    
+    // 简易加密函数 (XOR + Base64)
+    encrypt(data, key) {
+        const str = JSON.stringify(data);
+        let result = '';
+        for (let i = 0; i < str.length; i++) {
+            result += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        return btoa(result);
+    },
+    
+    // 简易解密函数
+    decrypt(encrypted, key) {
+        try {
+            const str = atob(encrypted);
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                result += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return JSON.parse(result);
+        } catch (e) {
+            console.error('解密失败:', e);
+            return null;
+        }
+    },
+    
+    // 加密导出
+    exportEncrypted() {
+        const state = {
+            characters: characters,
+            stats: StatsSystem.history,
+            achievements: AchievementSystem.achievements,
+            dailyChallenges: DailyChallengeSystem.challenges,
+            exportedAt: new Date().toISOString()
+        };
+        
+        // 加密数据
+        const encrypted = this.encrypt(state, this.encryptionKey);
+        
+        const blob = new Blob([encrypted], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `snoopyoffice_encrypted_${new Date().toISOString().slice(0,10)}.enc`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        console.log('🔐 数据已加密导出');
+        AudioSystem.playClick();
+    },
+    
+    // 解密导入
+    importEncrypted(file, password = null) {
+        const key = password || this.encryptionKey;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const encrypted = e.target.result;
+                const state = this.decrypt(encrypted, key);
+                if (state) {
+                    this.applyState(state);
+                    console.log('🔐 数据解密并导入成功!');
+                    AudioSystem.playTaskComplete();
+                } else {
+                    console.error('🔐 解密失败，密码可能不正确');
+                    AudioSystem.playError();
+                }
+            } catch (error) {
+                console.error('🔐 导入失败:', error);
+                AudioSystem.playError();
+            }
+        };
+        reader.readAsText(file);
+    },
     
     toggle() {
         this.show = !this.show;
@@ -6552,6 +6756,19 @@ const CloudSyncSystem = {
         ctx.fillStyle = COLORS.lightGray;
         ctx.font = '10px "Courier New"';
         ctx.fillText('💡 数据会自动保存到本地存储', panelX + panelW / 2, panelY + panelH - 25);
+        
+        // 加密导出按钮
+        ctx.fillStyle = COLORS.red;
+        ctx.fillRect(panelX + 25, btnY + 100, 70, 28);
+        ctx.fillStyle = COLORS.white;
+        ctx.font = '10px "Courier New"';
+        ctx.fillText('🔐 加密导出', panelX + 25 + 35, btnY + 118);
+        
+        // 加密导入按钮
+        ctx.fillStyle = COLORS.darkRed;
+        ctx.fillRect(panelX + 105, btnY + 100, 70, 28);
+        ctx.fillStyle = COLORS.white;
+        ctx.fillText('🔓 加密导入', panelX + 105 + 35, btnY + 118);
     },
     
     handleClick(x, y) {
@@ -6591,6 +6808,26 @@ const CloudSyncSystem = {
             input.onchange = (e) => {
                 if (e.target.files[0]) {
                     this.importFromFile(e.target.files[0]);
+                }
+            };
+            input.click();
+            return true;
+        }
+        
+        // 加密导出按钮
+        if (x > panelX + 25 && x < panelX + 95 && y > btnY + 100 && y < btnY + 128) {
+            this.exportEncrypted();
+            return true;
+        }
+        
+        // 加密导入按钮
+        if (x > panelX + 105 && x < panelX + 175 && y > btnY + 100 && y < btnY + 128) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.enc,.json';
+            input.onchange = (e) => {
+                if (e.target.files[0]) {
+                    this.importEncrypted(e.target.files[0]);
                 }
             };
             input.click();
