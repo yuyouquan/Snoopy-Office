@@ -530,6 +530,32 @@ function moveSelection(direction) {
 }
 
 function handleKeyboard(e) {
+    // CommandPalette 键盘处理 (Iteration 22)
+    if (CommandPalette.show) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            return;
+        }
+        if (CommandPalette.handleKey(e.key)) {
+            e.preventDefault();
+            return;
+        }
+    }
+    
+    // Tab 切换任务看板
+    if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        TaskBoard.toggle();
+        return;
+    }
+    
+    // Ctrl+P 打开命令面板
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        CommandPalette.toggle();
+        return;
+    }
+    
     if (KEYBOARD_SHORTCUTS[e.key]) {
         const charId = KEYBOARD_SHORTCUTS[e.key];
         if (charId === null) {
@@ -1041,6 +1067,12 @@ function render() {
     
     // 绘制每日任务趋势 (Iteration 21)
     DailyTrend.draw();
+    
+    // 绘制任务看板 (Iteration 22)
+    TaskBoard.draw();
+    
+    // 绘制快捷命令面板 (Iteration 22)
+    CommandPalette.draw();
     
     // 绘制时间/天气状态指示 (Iteration 19)
     drawStatusIndicators();
@@ -2515,6 +2547,238 @@ const DailyTrend = {
     toggle() {
         this.show = !this.show;
         AudioSystem.playClick();
+    }
+};
+
+// ==================== 实时任务看板 ====================
+const TaskBoard = {
+    show: false,
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+    },
+    
+    draw() {
+        if (!this.show) return;
+        
+        const panelWidth = 320;
+        const panelHeight = 400;
+        const panelX = canvas.width - panelWidth - 10;
+        const panelY = 60;
+        
+        // 背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+        ctx.strokeStyle = COLORS.green;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+        
+        // 标题
+        ctx.fillStyle = COLORS.green;
+        ctx.font = 'bold 14px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('📋 实时任务看板', panelX + panelWidth / 2, panelY + 20);
+        
+        // 任务列表
+        const workingChars = characters.filter(c => c.status === 'working');
+        let y = panelY + 40;
+        const lineHeight = 35;
+        
+        ctx.textAlign = 'left';
+        ctx.font = '12px "Courier New"';
+        
+        if (workingChars.length === 0) {
+            ctx.fillStyle = COLORS.lightGray;
+            ctx.fillText('暂无进行中的任务', panelX + 15, y + 20);
+        } else {
+            workingChars.forEach((char, i) => {
+                if (y + lineHeight > panelY + panelHeight - 30) return;
+                
+                // 角色图标
+                ctx.fillStyle = char.color || COLORS.blue;
+                ctx.fillRect(panelX + 10, y, 24, 24);
+                
+                // 角色名
+                ctx.fillStyle = COLORS.white;
+                ctx.font = 'bold 11px "Courier New"';
+                ctx.fillText(char.name, panelX + 40, y + 12);
+                
+                // 任务描述
+                ctx.fillStyle = COLORS.lightGray;
+                ctx.font = '10px "Courier New"';
+                const taskText = char.currentTask ? char.currentTask.substring(0, 25) : '待命';
+                ctx.fillText(taskText, panelX + 40, y + 22);
+                
+                // 进度条
+                const progress = char.progress || 0;
+                ctx.fillStyle = COLORS.darkGray;
+                ctx.fillRect(panelX + 10, y + 28, panelWidth - 50, 4);
+                ctx.fillStyle = COLORS.green;
+                ctx.fillRect(panelX + 10, y + 28, (panelWidth - 50) * (progress / 100), 4);
+                
+                y += lineHeight;
+            });
+        }
+        
+        // 统计
+        ctx.fillStyle = COLORS.orange;
+        ctx.font = '10px "Courier New"';
+        ctx.textAlign = 'right';
+        const idleCount = characters.filter(c => c.status === 'idle').length;
+        ctx.fillText(`工作中: ${workingChars.length} | 待命: ${idleCount}`, panelX + panelWidth - 10, panelY + panelHeight - 10);
+    }
+};
+
+// ==================== 快捷命令面板 ====================
+const CommandPalette = {
+    show: false,
+    query: '',
+    selectedIndex: 0,
+    commands: [
+        { id: 'toggle-realtime', label: '切换实时数据', key: 'R' },
+        { id: 'toggle-heatmap', label: '切换热力图', key: 'H' },
+        { id: 'toggle-ranking', label: '切换排名面板', key: 'L' },
+        { id: 'toggle-theme', label: '切换主题', key: 'T' },
+        { id: 'toggle-time', label: '切换时间', key: 'M' },
+        { id: 'toggle-weather', label: '切换天气', key: 'W' },
+        { id: 'toggle-skin', label: '切换皮肤', key: 'K' },
+        { id: 'toggle-sse', label: '切换SSE', key: 'S' },
+        { id: 'toggle-music', label: '切换音乐', key: 'B' },
+        { id: 'toggle-trend', label: '切换趋势图', key: 'E' },
+        { id: 'toggle-taskboard', label: '切换任务看板', key: 'Tab' },
+        { id: 'fullscreen', label: '全屏模式', key: 'F' },
+        { id: 'export', label: '导出状态', key: '' },
+        { id: 'import', label: '导入状态', key: '' },
+        { id: 'reset-view', label: '重置视图', key: 'Esc' },
+        { id: 'speed-up', label: '加速', key: '+' },
+        { id: 'speed-down', label: '减速', key: '-' },
+    ],
+    
+    filteredCommands() {
+        if (!this.query) return this.commands;
+        const q = this.query.toLowerCase();
+        return this.commands.filter(c => c.label.toLowerCase().includes(q));
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        this.query = '';
+        this.selectedIndex = 0;
+        if (this.show) {
+            AudioSystem.playSelect();
+        }
+    },
+    
+    execute(commandId) {
+        this.show = false;
+        AudioSystem.playClick();
+        
+        switch (commandId) {
+            case 'toggle-realtime': toggleRealTimeData(); break;
+            case 'toggle-heatmap': toggleHeatmap(); break;
+            case 'toggle-ranking': toggleRanking(); break;
+            case 'toggle-theme': ThemeSystem.toggle(); break;
+            case 'toggle-time': TimeOfDaySystem.cycle(); break;
+            case 'toggle-weather': WeatherSystem.toggle(); break;
+            case 'toggle-skin': SkinSystem.cycle(); break;
+            case 'toggle-sse': toggleSSE(); break;
+            case 'toggle-music': BackgroundMusic.toggle(); break;
+            case 'toggle-trend': DailyTrend.toggle(); break;
+            case 'toggle-taskboard': TaskBoard.toggle(); break;
+            case 'fullscreen': toggleFullscreen(); break;
+            case 'export': exportState(); break;
+            case 'import': document.querySelector('input[type="file"]').click(); break;
+            case 'reset-view': resetView(); break;
+            case 'speed-up': adjustSpeed(0.5); break;
+            case 'speed-down': adjustSpeed(-0.5); break;
+        }
+    },
+    
+    draw() {
+        if (!this.show) return;
+        
+        const paletteWidth = 400;
+        const paletteHeight = 300;
+        const paletteX = canvas.width / 2 - paletteWidth / 2;
+        const paletteY = canvas.height / 2 - paletteHeight / 2;
+        
+        // 背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+        ctx.fillRect(paletteX, paletteY, paletteWidth, paletteHeight);
+        ctx.strokeStyle = COLORS.blue;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(paletteX, paletteY, paletteWidth, paletteHeight);
+        
+        // 标题
+        ctx.fillStyle = COLORS.blue;
+        ctx.font = 'bold 14px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡ 快捷命令面板', paletteX + paletteWidth / 2, paletteY + 25);
+        
+        // 搜索框
+        ctx.fillStyle = COLORS.darkGray;
+        ctx.fillRect(paletteX + 10, paletteY + 35, paletteWidth - 20, 30);
+        ctx.fillStyle = COLORS.white;
+        ctx.font = '14px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText(this.query || '输入命令搜索...', paletteX + 15, paletteY + 56);
+        
+        // 命令列表
+        const filtered = this.filteredCommands();
+        let y = paletteY + 80;
+        const itemHeight = 25;
+        
+        filtered.slice(0, 8).forEach((cmd, i) => {
+            if (i === this.selectedIndex) {
+                ctx.fillStyle = COLORS.darkBlue;
+                ctx.fillRect(paletteX + 10, y - 15, paletteWidth - 20, itemHeight);
+            }
+            
+            ctx.fillStyle = i === this.selectedIndex ? COLORS.white : COLORS.lightGray;
+            ctx.font = '12px "Courier New"';
+            ctx.textAlign = 'left';
+            ctx.fillText(cmd.label, paletteX + 20, y);
+            
+            if (cmd.key) {
+                ctx.fillStyle = COLORS.orange;
+                ctx.textAlign = 'right';
+                ctx.fillText(`[${cmd.key}]`, paletteX + paletteWidth - 20, y);
+            }
+            
+            y += itemHeight;
+        });
+        
+        // 提示
+        ctx.fillStyle = COLORS.darkGray;
+        ctx.font = '10px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('↑↓ 选择 | Enter 执行 | Esc 关闭', paletteX + paletteWidth / 2, paletteY + paletteHeight - 10);
+    },
+    
+    handleKey(key) {
+        if (!this.show) return false;
+        
+        const filtered = this.filteredCommands();
+        
+        if (key === 'ArrowUp') {
+            this.selectedIndex = Math.max(0, this.selectedIndex - 1);
+            return true;
+        }
+        if (key === 'ArrowDown') {
+            this.selectedIndex = Math.min(filtered.length - 1, this.selectedIndex + 1);
+            return true;
+        }
+        if (key === 'Enter' && filtered.length > 0) {
+            this.execute(filtered[this.selectedIndex].id);
+            return true;
+        }
+        if (key === 'Escape') {
+            this.show = false;
+            return true;
+        }
+        
+        return false;
     }
 };
 
