@@ -281,6 +281,7 @@ const CHARACTERS = [
 
 let canvas, ctx;
 let characters = JSON.parse(JSON.stringify(CHARACTERS));
+let filteredCharacters = characters; // 任务筛选器使用的过滤后角色列表
 let selectedCharacter = null;
 let animationFrame = 0;
 let isRunning = true;
@@ -1077,6 +1078,12 @@ function render() {
     // 绘制时间/天气状态指示 (Iteration 19)
     drawStatusIndicators();
     
+    // 绘制任务筛选器 (Iteration 23)
+    TaskFilter.draw();
+    
+    // 绘制自定义标记 (Iteration 23)
+    CustomMarkers.draw();
+    
     // 更新缩放系统
     ZoomSystem.update();
     
@@ -1133,7 +1140,9 @@ function drawZones() {
 }
 
 function drawCharacters() {
-    characters.forEach(char => {
+    // 使用筛选后的角色列表
+    const renderList = TaskFilter.show ? filteredCharacters : characters;
+    renderList.forEach(char => {
         const pos = getCharacterPosition(char);
         const x = (pos.x || pos.x === 0) ? pos.x : getZoneCenter(char.zone).x;
         const y = (pos.y || pos.y === 0) ? pos.y : getZoneCenter(char.zone).y;
@@ -2816,4 +2825,421 @@ function drawStatusIndicators() {
     ctx.fillText(gatewayStatus, x - 180, y);
 }
 
+// ==================== 迭代23: 拖拽角色系统 ====================
+const DragSystem = {
+    enabled: true,
+    dragging: null,
+    dragOffset: { x: 0, y: 0 },
+    
+    start(e) {
+        if (!this.enabled) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        
+        // 检查是否点击了角色
+        const clickedChar = characters.find(char => {
+            const pos = getCharacterPosition(char);
+            const charX = pos.x || getZoneCenter(char.zone).x;
+            const charY = pos.y || getZoneCenter(char.zone).y;
+            return Math.abs(x - charX) < 25 && Math.abs(y - charY) < 30;
+        });
+        
+        if (clickedChar) {
+            this.dragging = clickedChar;
+            this.dragOffset = {
+                x: x - (getCharacterPosition(clickedChar).x || getZoneCenter(clickedChar.zone).x),
+                y: y - (getCharacterPosition(clickedChar).y || getZoneCenter(clickedChar.zone).y)
+            };
+            canvas.style.cursor = 'grabbing';
+            AudioSystem.playSelect();
+        }
+    },
+    
+    move(e) {
+        if (!this.dragging) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX - this.dragOffset.x;
+        const y = (e.clientY - rect.top) * scaleY - this.dragOffset.y;
+        
+        // 更新角色位置
+        characterPositions[this.dragging.id] = { x, y };
+        
+        // 自动检测区域
+        for (const [zoneId, zone] of Object.entries(ZONES)) {
+            if (x >= zone.x && x <= zone.x + zone.width &&
+                y >= zone.y && y <= zone.y + zone.height) {
+                this.dragging.zone = zoneId;
+                break;
+            }
+        }
+    },
+    
+    end() {
+        if (this.dragging) {
+            // 触发区域访问记录
+            ZoneStats.recordVisit(this.dragging.zone);
+            AudioSystem.playClick();
+        }
+        this.dragging = null;
+        canvas.style.cursor = 'default';
+    },
+    
+    toggle() {
+        this.enabled = !this.enabled;
+        console.log(`🎯 拖拽模式: ${this.enabled ? '开启' : '关闭'}`);
+    }
+};
+
+// 绑定拖拽事件
+canvas.addEventListener('mousedown', (e) => DragSystem.start(e));
+document.addEventListener('mousemove', (e) => DragSystem.move(e));
+document.addEventListener('mouseup', () => DragSystem.end());
+
+// ==================== 迭代23: 任务筛选器 ====================
+const TaskFilter = {
+    active: false,
+    filters: {
+        status: 'all', // all, working, idle
+        zone: 'all',
+        role: 'all'
+    },
+    
+    show: false,
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+    },
+    
+    setStatus(status) {
+        this.filters.status = status;
+        this.updateFilteredCharacters();
+    },
+    
+    setZone(zone) {
+        this.filters.zone = zone;
+        this.updateFilteredCharacters();
+    },
+    
+    setRole(role) {
+        this.filters.role = role;
+        this.updateFilteredCharacters();
+    },
+    
+    updateFilteredCharacters() {
+        filteredCharacters = characters.filter(char => {
+            if (this.filters.status !== 'all' && char.status !== this.filters.status) return false;
+            if (this.filters.zone !== 'all' && char.zone !== this.filters.zone) return false;
+            if (this.filters.role !== 'all' && char.role !== this.filters.role) return false;
+            return true;
+        });
+    },
+    
+    draw() {
+        if (!this.show) return;
+        
+        const panelWidth = 200;
+        const panelHeight = 180;
+        const panelX = canvas.width - panelWidth - 10;
+        const panelY = 70;
+        
+        // 面板背景
+        ctx.fillStyle = 'rgba(45, 45, 53, 0.95)';
+        ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+        ctx.strokeStyle = COLORS.darkBlue;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+        
+        // 标题
+        ctx.fillStyle = COLORS.white;
+        ctx.font = 'bold 14px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('🔍 任务筛选器', panelX + panelWidth / 2, panelY + 20);
+        
+        // 状态筛选
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = COLORS.lightGray;
+        ctx.fillText('状态:', panelX + 10, panelY + 45);
+        
+        const statusY = panelY + 60;
+        ['all', 'working', 'idle'].forEach((status, i) => {
+            const bx = panelX + 10 + i * 60;
+            const label = status === 'all' ? '全部' : (status === 'working' ? '工作中' : '待命');
+            
+            ctx.fillStyle = this.filters.status === status ? COLORS.green : COLORS.darkGray;
+            ctx.fillRect(bx, statusY, 50, 20);
+            
+            ctx.fillStyle = COLORS.white;
+            ctx.font = '10px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, bx + 25, statusY + 14);
+        });
+        
+        // 角色筛选
+        ctx.fillStyle = COLORS.lightGray;
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText('角色:', panelX + 10, panelY + 100);
+        
+        const roleY = panelY + 115;
+        const roles = ['all', 'pm', 'dev', 'qa', 'security', 'miner'];
+        roles.forEach((role, i) => {
+            const bx = panelX + 10 + (i % 3) * 60;
+            const by = roleY + Math.floor(i / 3) * 22;
+            const label = role === 'all' ? '全部' : role.toUpperCase();
+            
+            ctx.fillStyle = this.filters.role === role ? COLORS.blue : COLORS.darkGray;
+            ctx.fillRect(bx, by, 50, 18);
+            
+            ctx.fillStyle = COLORS.white;
+            ctx.font = '9px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, bx + 25, by + 13);
+        });
+        
+        // 筛选结果计数
+        this.updateFilteredCharacters();
+        ctx.fillStyle = COLORS.orange;
+        ctx.font = 'bold 12px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText(`显示: ${filteredCharacters.length}/${characters.length}`, panelX + panelWidth / 2, panelY + panelHeight - 10);
+    },
+    
+    handleClick(x, y) {
+        if (!this.show) return false;
+        
+        const panelWidth = 200;
+        const panelHeight = 180;
+        const panelX = canvas.width - panelWidth - 10;
+        const panelY = 70;
+        
+        // 检查点击区域
+        if (x < panelX || x > panelX + panelWidth || 
+            y < panelY || y > panelY + panelHeight) {
+            return false;
+        }
+        
+        // 状态筛选点击
+        const statusY = panelY + 60;
+        ['all', 'working', 'idle'].forEach((status, i) => {
+            const bx = panelX + 10 + i * 60;
+            if (x >= bx && x <= bx + 50 && y >= statusY && y <= statusY + 20) {
+                this.filters.status = status;
+                AudioSystem.playClick();
+            }
+        });
+        
+        // 角色筛选点击
+        const roleY = panelY + 115;
+        const roles = ['all', 'pm', 'dev', 'qa', 'security', 'miner'];
+        roles.forEach((role, i) => {
+            const bx = panelX + 10 + (i % 3) * 60;
+            const by = roleY + Math.floor(i / 3) * 22;
+            if (x >= bx && x <= bx + 50 && y >= by && y <= by + 18) {
+                this.filters.role = role;
+                AudioSystem.playClick();
+            }
+        });
+        
+        return true;
+    }
+};
+
+// ==================== 迭代23: 渲染性能优化 ====================
+const RenderOptimizer = {
+    lastFrameTime: 0,
+    frameCount: 0,
+    fps: 60,
+    targetFPS: 60,
+    skipFrames: false,
+    
+    // 脏矩形跟踪
+    dirtyRects: [],
+    fullRedrawNeeded: true,
+    
+    init() {
+        // 自适应帧率
+        this.adaptiveFPS();
+    },
+    
+    adaptiveFPS() {
+        // 根据设备性能调整帧率
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        this.targetFPS = isMobile ? 30 : 60;
+    },
+    
+    shouldRender(timestamp) {
+        // 帧率限制
+        const frameInterval = 1000 / this.targetFPS;
+        const elapsed = timestamp - this.lastFrameTime;
+        
+        if (elapsed < frameInterval) {
+            return false;
+        }
+        
+        this.lastFrameTime = timestamp - (elapsed % frameInterval);
+        return true;
+    },
+    
+    markDirty(x, y, width, height) {
+        this.dirtyRects.push({ x, y, width, height });
+    },
+    
+    markFullRedraw() {
+        this.fullRedrawNeeded = true;
+        this.dirtyRects = [];
+    },
+    
+    optimizeCharacterRender(char) {
+        // 视锥剔除：只渲染可见角色
+        const pos = getCharacterPosition(char);
+        return pos.x > -50 && pos.x < canvas.width + 50 &&
+               pos.y > -50 && pos.y < canvas.height + 50;
+    }
+};
+
+// ==================== 迭代23: 自定义区域标记 ====================
+const CustomMarkers = {
+    markers: [],
+    show: false,
+    
+    add(x, y, label, color = COLORS.yellow) {
+        this.markers.push({ x, y, label, color, id: Date.now() });
+        AudioSystem.playClick();
+    },
+    
+    remove(id) {
+        this.markers = this.markers.filter(m => m.id !== id);
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+    },
+    
+    draw() {
+        if (!this.show) return;
+        
+        this.markers.forEach(marker => {
+            // 绘制标记点
+            ctx.fillStyle = marker.color;
+            ctx.beginPath();
+            ctx.arc(marker.x, marker.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制标签
+            ctx.fillStyle = COLORS.white;
+            ctx.font = '10px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText(marker.label, marker.x, marker.y - 12);
+        });
+    },
+    
+    handleClick(x, y) {
+        if (!this.show) return false;
+        
+        // 检查是否点击了标记
+        for (const marker of this.markers) {
+            const dist = Math.sqrt((x - marker.x) ** 2 + (y - marker.y) ** 2);
+            if (dist < 15) {
+                this.remove(marker.id);
+                return true;
+            }
+        }
+        
+        return false;
+    }
+};
+
+// ==================== 键盘快捷键更新 ====================
+// 添加新的快捷键映射
+const ITERATION23_SHORTCUTS = {
+    'd': () => DragSystem.toggle(),
+    'D': () => DragSystem.toggle(),
+    'f': () => TaskFilter.toggle(),
+    'F': () => TaskFilter.toggle(),
+    ']': () => CustomMarkers.toggle(),
+    'p': () => { if (!CommandPalette.show) CommandPalette.toggle(); } // 避免和Ctrl+P冲突
+};
+
+// 合并快捷键
+Object.assign(KEYBOARD_SHORTCUTS, ITERATION23_SHORTCUTS);
+
+// 更新 handleClick 以支持新功能
+const originalHandleClick = handleClick;
+handleClick = function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    // 任务筛选器点击
+    if (TaskFilter.handleClick(x, y)) return;
+    
+    // 自定义标记点击
+    if (CustomMarkers.handleClick(x, y)) return;
+    
+    // 原有逻辑
+    originalHandleClick(e);
+};
+
+// 双击添加标记
+canvas.addEventListener('dblclick', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    if (CustomMarkers.show) {
+        const label = prompt('输入标记名称:', '标记');
+        if (label) {
+            CustomMarkers.add(x, y, label);
+        }
+    }
+});
+
+// 按钮添加到 HTML
+document.addEventListener('DOMContentLoaded', () => {
+    const toolbar = document.querySelector('.status-bar');
+    if (toolbar) {
+        // 拖拽按钮
+        const dragBtn = document.createElement('button');
+        dragBtn.id = 'drag-toggle';
+        dragBtn.className = 'sound-btn';
+        dragBtn.textContent = '🎯';
+        dragBtn.title = '拖拽角色 (D)';
+        dragBtn.onclick = () => DragSystem.toggle();
+        toolbar.insertBefore(dragBtn, toolbar.children[toolbar.children.length - 1]);
+        
+        // 筛选器按钮
+        const filterBtn = document.createElement('button');
+        filterBtn.id = 'filter-toggle';
+        filterBtn.className = 'sound-btn';
+        filterBtn.textContent = '🔍';
+        filterBtn.title = '任务筛选器 (F)';
+        filterBtn.onclick = () => TaskFilter.toggle();
+        toolbar.insertBefore(filterBtn, toolbar.children[toolbar.children.length - 1]);
+        
+        // 标记按钮
+        const markerBtn = document.createElement('button');
+        markerBtn.id = 'marker-toggle';
+        markerBtn.className = 'sound-btn';
+        markerBtn.textContent = '📍';
+        markerBtn.title = '自定义标记 (])';
+        markerBtn.onclick = () => CustomMarkers.toggle();
+        toolbar.insertBefore(markerBtn, toolbar.children[toolbar.children.length - 1]);
+    }
+});
+
+// ==================== 初始化完成 ====================
 window.onload = init;
