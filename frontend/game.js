@@ -5068,10 +5068,924 @@ feedbackStyle.textContent = `
 `;
 document.head.appendChild(feedbackStyle);
 
-// 修改初始化函数以包含反馈系统
-const originalInit27 = init;
+// ==================== 迭代28: 角色互动小游戏 ====================
+const CharInteraction = {
+    active: false,
+    selectedChars: [],
+    gameMode: null, // 'quiz', 'race', 'chat'
+    quizQuestions: [
+        { q: '谁最适合写代码?', answers: ['前端开发', '小说家', '产品经理'], correct: 0 },
+        { q: '谁负责测试?', answers: ['安全专家', '测试工程师', '项目经理'], correct: 1 },
+        { q: '谁搜索信息?', answers: ['新闻矿工', 'AI助手', '老板'], correct: 0 },
+        { q: '谁整理需求?', answers: ['项目经理', '产品经理', '后端开发'], correct: 1 },
+        { q: '谁负责安全?', answers: ['测试工程师', '前端开发', '安全专家'], correct: 2 }
+    ],
+    currentQuestion: 0,
+    score: 0,
+    timer: 0,
+    racePositions: {},
+    winner: null,
+    
+    toggle() {
+        this.active = !this.active;
+        AudioSystem.playClick();
+        console.log(`🎮 角色互动: ${this.active ? '开启' : '关闭'}`);
+    },
+    
+    startQuiz() {
+        this.gameMode = 'quiz';
+        this.currentQuestion = 0;
+        this.score = 0;
+        this.selectedChars = [];
+        console.log('🎮 开始问答游戏');
+    },
+    
+    startRace() {
+        this.gameMode = 'race';
+        this.racePositions = {};
+        this.winner = null;
+        this.selectedChars = characters.slice(0, 4).map(c => ({ ...c }));
+        this.selectedChars.forEach(c => this.racePositions[c.id] = 0);
+        this.timer = Date.now();
+        console.log('🏃 开始赛跑游戏');
+    },
+    
+    startChat() {
+        this.gameMode = 'chat';
+        this.selectedChars = characters.slice(0, 2).map(c => ({ ...c }));
+        console.log('💬 开始聊天游戏');
+    },
+    
+    update() {
+        if (!this.active) return;
+        
+        if (this.gameMode === 'race' && this.selectedChars.length > 0) {
+            // 赛跑模式更新
+            this.selectedChars.forEach(char => {
+                if (Math.random() < 0.3) {
+                    this.racePositions[char.id] += Math.random() * 15 + 5;
+                }
+            });
+            
+            // 检查获胜者
+            const maxPos = Math.max(...Object.values(this.racePositions));
+            if (maxPos >= 500) {
+                const winnerId = Object.keys(this.racePositions).find(id => this.racePositions[id] === maxPos);
+                this.winner = this.selectedChars.find(c => c.id === winnerId);
+            }
+        }
+    },
+    
+    draw() {
+        if (!this.active) return;
+        
+        const panelW = 400, panelH = 350;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        // 面板背景
+        ctx.fillStyle = 'rgba(29, 43, 83, 0.95)';
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        ctx.strokeStyle = COLORS.yellow;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(panelX, panelY, panelW, panelH);
+        
+        // 标题
+        ctx.fillStyle = COLORS.yellow;
+        ctx.font = 'bold 20px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('🎮 角色互动游戏', panelX + panelW/2, panelY + 30);
+        
+        if (!this.gameMode) {
+            // 游戏选择菜单
+            this.drawMenu(panelX, panelY, panelW, panelH);
+        } else if (this.gameMode === 'quiz') {
+            this.drawQuiz(panelX, panelY, panelW, panelH);
+        } else if (this.gameMode === 'race') {
+            this.drawRace(panelX, panelY, panelW, panelH);
+        } else if (this.gameMode === 'chat') {
+            this.drawChat(panelX, panelY, panelW, panelH);
+        }
+        
+        // 关闭按钮
+        ctx.fillStyle = COLORS.red;
+        ctx.font = 'bold 16px "Courier New"';
+        ctx.fillText('✕ 关闭', panelX + panelW - 50, panelY + 25);
+    },
+    
+    drawMenu(px, py, pw, ph) {
+        const btnW = 200, btnH = 40;
+        const startY = py + 60;
+        
+        ctx.font = '16px "Courier New"';
+        ctx.textAlign = 'center';
+        
+        // 问答按钮
+        ctx.fillStyle = COLORS.green;
+        ctx.fillRect(px + pw/2 - btnW/2, startY, btnW, btnH);
+        ctx.fillStyle = COLORS.white;
+        ctx.fillText('🧠 知识问答', px + pw/2, startY + 26);
+        
+        // 赛跑按钮
+        ctx.fillStyle = COLORS.blue;
+        ctx.fillRect(px + pw/2 - btnW/2, startY + 60, btnW, btnH);
+        ctx.fillText('🏃 角色赛跑', px + pw/2, startY + 86);
+        
+        // 聊天按钮
+        ctx.fillStyle = COLORS.pink;
+        ctx.fillRect(px + pw/2 - btnW/2, startY + 120, btnW, btnH);
+        ctx.fillText('💬 随机聊天', px + pw/2, startY + 146);
+    },
+    
+    drawQuiz(px, py, pw, ph) {
+        if (this.currentQuestion >= this.quizQuestions.length) {
+            ctx.fillStyle = COLORS.white;
+            ctx.font = 'bold 24px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText(`游戏结束! 得分: ${this.score}/${this.quizQuestions.length}`, px + pw/2, py + ph/2);
+            ctx.font = '14px "Courier New"';
+            ctx.fillText('按 ESC 返回', px + pw/2, py + ph/2 + 40);
+            return;
+        }
+        
+        const q = this.quizQuestions[this.currentQuestion];
+        
+        ctx.fillStyle = COLORS.white;
+        ctx.font = 'bold 16px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Q${this.currentQuestion + 1}: ${q.q}`, px + pw/2, py + 70);
+        
+        const btnW = 180, btnH = 35;
+        q.answers.forEach((ans, i) => {
+            const y = py + 110 + i * 50;
+            ctx.fillStyle = COLORS.darkGreen;
+            ctx.fillRect(px + pw/2 - btnW/2, y, btnW, btnH);
+            ctx.fillStyle = COLORS.white;
+            ctx.font = '14px "Courier New"';
+            ctx.fillText(`${i+1}. ${ans}`, px + pw/2, y + 23);
+        });
+    },
+    
+    drawRace(px, py, pw, ph) {
+        const trackY = py + 80;
+        
+        // 赛道
+        ctx.fillStyle = '#333';
+        ctx.fillRect(px + 20, trackY, pw - 40, 150);
+        
+        // 终点线
+        ctx.strokeStyle = COLORS.white;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(px + pw - 30, trackY);
+        ctx.lineTo(px + pw - 30, trackY + 150);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // 角色位置
+        this.selectedChars.forEach((char, i) => {
+            const y = trackY + 20 + i * 35;
+            const x = 30 + (this.racePositions[char.id] || 0);
+            
+            ctx.fillStyle = char.color;
+            ctx.fillRect(px + x, y, 25, 25);
+            
+            ctx.fillStyle = COLORS.white;
+            ctx.font = 'bold 12px "Courier New"';
+            ctx.textAlign = 'left';
+            ctx.fillText(char.name.split(' ')[0], px + x + 30, y + 17);
+        });
+        
+        if (this.winner) {
+            ctx.fillStyle = COLORS.yellow;
+            ctx.font = 'bold 20px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText(`🏆 获胜者: ${this.winner.name}`, px + pw/2, py + ph - 30);
+        }
+    },
+    
+    drawChat(px, py, pw, ph) {
+        const chatY = py + 70;
+        const bubbleW = pw - 60, bubbleH = 60;
+        
+        // 角色1
+        ctx.fillStyle = this.selectedChars[0]?.color || COLORS.blue;
+        ctx.fillRect(px + 20, chatY, 30, 30);
+        ctx.fillStyle = COLORS.white;
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText(this.selectedChars[0]?.name || '角色1', px + 20, chatY + 45);
+        
+        ctx.fillStyle = COLORS.lightGray;
+        ctx.fillRect(px + 60, chatY + 10, bubbleW, bubbleH);
+        ctx.fillStyle = COLORS.black;
+        ctx.font = '12px "Courier New"';
+        ctx.fillText('今天任务进度不错!', px + 70, chatY + 40);
+        
+        // 角色2
+        ctx.fillStyle = this.selectedChars[1]?.color || COLORS.green;
+        ctx.fillRect(px + pw - 50, chatY + 90, 30, 30);
+        ctx.fillStyle = COLORS.white;
+        ctx.fillText(this.selectedChars[1]?.name || '角色2', px + pw - 100, chatY + 135);
+        
+        ctx.fillStyle = COLORS.blue;
+        ctx.fillRect(px + 20, chatY + 100, bubbleW, bubbleH);
+        ctx.fillStyle = COLORS.white;
+        ctx.fillText('是啊,测试通过了!', px + 30, chatY + 130);
+        
+        // 输入提示
+        ctx.fillStyle = COLORS.orange;
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('💡 点击角色开始互动', px + pw/2, py + ph - 25);
+    },
+    
+    handleClick(x, y) {
+        if (!this.active) return false;
+        
+        const panelW = 400, panelH = 350;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        // 关闭按钮
+        if (x > panelX + panelW - 70 && x < panelX + panelW - 10 && 
+            y > panelY + 5 && y < panelY + 35) {
+            this.active = false;
+            this.gameMode = null;
+            AudioSystem.playClick();
+            return true;
+        }
+        
+        if (!this.gameMode) {
+            const btnW = 200, btnH = 40;
+            const startY = panelY + 60;
+            
+            // 问答
+            if (x > panelX + panelW/2 - btnW/2 && x < panelX + panelW/2 + btnW/2 &&
+                y > startY && y < startY + btnH) {
+                this.startQuiz();
+                return true;
+            }
+            // 赛跑
+            if (x > panelX + panelW/2 - btnW/2 && x < panelX + panelW/2 + btnW/2 &&
+                y > startY + 60 && y < startY + 100) {
+                this.startRace();
+                return true;
+            }
+            // 聊天
+            if (x > panelX + panelW/2 - btnW/2 && x < panelX + panelW/2 + btnW/2 &&
+                y > startY + 120 && y < startY + 160) {
+                this.startChat();
+                return true;
+            }
+        }
+        
+        return true;
+    }
+};
+
+// ==================== 迭代28: 效率趋势分析 ====================
+const EfficiencyAnalytics = {
+    show: false,
+    data: {
+        daily: [],
+        weekly: [],
+        monthly: []
+    },
+    currentView: 'daily', // daily, weekly, monthly
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`📊 效率分析: ${this.show ? '开启' : '关闭'}`);
+    },
+    
+    cycleView() {
+        const views = ['daily', 'weekly', 'monthly'];
+        const idx = views.indexOf(this.currentView);
+        this.currentView = views[(idx + 1) % views.length];
+    },
+    
+    // 生成报告数据
+    generateReport() {
+        const now = new Date();
+        
+        // 模拟历史数据
+        this.data.daily = this.generateDailyData();
+        this.data.weekly = this.generateWeeklyData();
+        this.data.monthly = this.generateMonthlyData();
+        
+        return {
+            period: this.currentView,
+            generatedAt: now.toLocaleString('zh-CN'),
+            summary: this.getSummary(),
+            topPerformer: StatsSystem.getTopPerformer(),
+            trend: this.calculateTrend()
+        };
+    },
+    
+    generateDailyData() {
+        const data = [];
+        for (let i = 23; i >= 0; i--) {
+            const hour = new Date();
+            hour.setHours(hour.getHours() - i, 0, 0, 0);
+            data.push({
+                time: hour.getHours() + ':00',
+                efficiency: Math.floor(40 + Math.random() * 40),
+                tasks: Math.floor(Math.random() * 10)
+            });
+        }
+        return data;
+    },
+    
+    generateWeeklyData() {
+        const data = [];
+        const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+        for (let i = 6; i >= 0; i--) {
+            const day = new Date();
+            day.setDate(day.getDate() - i);
+            data.push({
+                day: days[day.getDay() === 0 ? 6 : day.getDay() - 1],
+                efficiency: Math.floor(50 + Math.random() * 35),
+                tasks: Math.floor(15 + Math.random() * 20)
+            });
+        }
+        return data;
+    },
+    
+    generateMonthlyData() {
+        const data = [];
+        for (let i = 29; i >= 0; i--) {
+            const day = new Date();
+            day.setDate(day.getDate() - i);
+            data.push({
+                date: `${day.getMonth() + 1}/${day.getDate()}`,
+                efficiency: Math.floor(45 + Math.random() * 40),
+                tasks: Math.floor(10 + Math.random() * 25)
+            });
+        }
+        return data;
+    },
+    
+    getSummary() {
+        const currentData = this.data[this.currentView];
+        if (!currentData || currentData.length === 0) return {};
+        
+        const avgEfficiency = Math.floor(currentData.reduce((s, d) => s + d.efficiency, 0) / currentData.length);
+        const totalTasks = currentData.reduce((s, d) => s + d.tasks, 0);
+        
+        return { avgEfficiency, totalTasks };
+    },
+    
+    calculateTrend() {
+        const data = this.data[this.currentView];
+        if (data.length < 2) return 0;
+        
+        const recent = data.slice(-3);
+        const older = data.slice(-6, -3);
+        
+        if (recent.length === 0 || older.length === 0) return 0;
+        
+        const recentAvg = recent.reduce((s, d) => s + d.efficiency, 0) / recent.length;
+        const olderAvg = older.reduce((s, d) => s + d.efficiency, 0) / older.length;
+        
+        return Math.floor(recentAvg - olderAvg);
+    },
+    
+    draw() {
+        if (!this.show) return;
+        
+        const panelW = 500, panelH = 400;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        // 面板背景
+        ctx.fillStyle = 'rgba(29, 43, 83, 0.95)';
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        ctx.strokeStyle = COLORS.blue;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(panelX, panelY, panelW, panelH);
+        
+        // 标题
+        ctx.fillStyle = COLORS.white;
+        ctx.font = 'bold 20px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('📊 效率趋势分析', panelX + panelW/2, panelY + 30);
+        
+        // 视图切换按钮
+        this.drawViewButtons(panelX, panelY, panelW);
+        
+        // 绘制图表
+        this.drawChart(panelX, panelY, panelW, panelH);
+        
+        // 关闭按钮
+        ctx.fillStyle = COLORS.red;
+        ctx.font = 'bold 14px "Courier New"';
+        ctx.fillText('✕ 关闭', panelX + panelW - 45, panelY + 20);
+    },
+    
+    drawViewButtons(px, py, pw) {
+        const views = [
+            { key: 'daily', label: '📅 日' },
+            { key: 'weekly', label: '📆 周' },
+            { key: 'monthly', label: '📅 月' }
+        ];
+        
+        const btnW = 80, btnH = 28;
+        const startX = px + pw/2 - 120;
+        
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'center';
+        
+        views.forEach((v, i) => {
+            const x = startX + i * 90;
+            ctx.fillStyle = this.currentView === v.key ? COLORS.green : COLORS.darkGray;
+            ctx.fillRect(x, py + 45, btnW, btnH);
+            ctx.fillStyle = COLORS.white;
+            ctx.fillText(v.label, x + btnW/2, py + 65);
+        });
+    },
+    
+    drawChart(px, py, pw, ph) {
+        const data = this.data[this.currentView];
+        if (!data || data.length === 0) return;
+        
+        const chartX = px + 40;
+        const chartY = py + 100;
+        const chartW = pw - 80;
+        const chartH = ph - 150;
+        
+        // 绘制网格
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        
+        for (let i = 0; i <= 5; i++) {
+            const y = chartY + (chartH / 5) * i;
+            ctx.beginPath();
+            ctx.moveTo(chartX, y);
+            ctx.lineTo(chartX + chartW, y);
+            ctx.stroke();
+            
+            ctx.fillStyle = '#888';
+            ctx.font = '10px "Courier New"';
+            ctx.textAlign = 'right';
+            ctx.fillText((100 - i * 20) + '%', chartX - 5, y + 4);
+        }
+        
+        // 绘制数据线
+        const maxVal = 100;
+        const step = chartW / (data.length - 1);
+        
+        ctx.strokeStyle = COLORS.green;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        data.forEach((d, i) => {
+            const x = chartX + i * step;
+            const y = chartY + chartH - (d.efficiency / maxVal) * chartH;
+            
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+            
+            // 数据点
+            ctx.fillStyle = COLORS.green;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.stroke();
+        
+        // 摘要信息
+        const summary = this.getSummary();
+        const trend = this.calculateTrend();
+        
+        ctx.textAlign = 'left';
+        ctx.fillStyle = COLORS.white;
+        ctx.font = '14px "Courier New"';
+        ctx.fillText(`平均效率: ${summary.avgEfficiency}%`, px + 40, py + ph - 50);
+        ctx.fillText(`完成任务: ${summary.totalTasks}`, px + 40, py + ph - 30);
+        
+        const trendColor = trend >= 0 ? COLORS.green : COLORS.red;
+        const trendIcon = trend >= 0 ? '📈' : '📉';
+        ctx.fillStyle = trendColor;
+        ctx.fillText(`${trendIcon} 趋势: ${trend > 0 ? '+' : ''}${trend}%`, px + 200, py + ph - 40);
+        
+        // 导出按钮
+        ctx.fillStyle = COLORS.orange;
+        ctx.fillRect(px + pw - 100, py + ph - 45, 80, 25);
+        ctx.fillStyle = COLORS.white;
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('📥 导出报告', px + pw - 60, py + ph - 28);
+    },
+    
+    handleClick(x, y) {
+        if (!this.show) return false;
+        
+        const panelW = 500, panelH = 400;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        // 关闭
+        if (x > panelX + panelW - 60 && x < panelX + panelW - 10 && 
+            y > panelY + 5 && y < panelY + 25) {
+            this.show = false;
+            AudioSystem.playClick();
+            return true;
+        }
+        
+        // 视图切换
+        const views = ['daily', 'weekly', 'monthly'];
+        const btnW = 80, btnH = 28;
+        const startX = panelX + panelW/2 - 120;
+        
+        views.forEach((v, i) => {
+            const bx = startX + i * 90;
+            if (x > bx && x < bx + btnW && y > panelY + 45 && y < panelY + 73) {
+                this.currentView = v;
+                AudioSystem.playClick();
+            }
+        });
+        
+        // 导出报告
+        if (x > panelX + panelW - 100 && x < panelX + panelW - 20 &&
+            y > panelY + panelH - 45 && y < panelY + panelH - 20) {
+            this.exportReport();
+        }
+        
+        return true;
+    },
+    
+    exportReport() {
+        const report = this.generateReport();
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `效率报告_${report.generatedAt.replace(/[/:]/g, '-')}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        AudioSystem.playTaskComplete();
+        console.log('📥 报告已导出');
+    }
+};
+
+// ==================== 迭代28: 高级搜索增强 ====================
+const AdvancedSearch = {
+    show: false,
+    query: '',
+    filters: {
+        status: 'all',
+        zone: 'all',
+        role: 'all',
+        minProgress: 0,
+        maxProgress: 100
+    },
+    results: [],
+    selectedIndex: 0,
+    
+    toggle() {
+        this.show = !this.show;
+        if (this.show) {
+            this.query = '';
+            this.search();
+        }
+        AudioSystem.playClick();
+        console.log(`🔎 高级搜索: ${this.show ? '开启' : '关闭'}`);
+    },
+    
+    search() {
+        this.results = characters.filter(char => {
+            // 文本搜索
+            if (this.query) {
+                const q = this.query.toLowerCase();
+                const match = char.name.toLowerCase().includes(q) ||
+                    char.role.toLowerCase().includes(q) ||
+                    char.task.toLowerCase().includes(q) ||
+                    char.zone.toLowerCase().includes(q);
+                if (!match) return false;
+            }
+            
+            // 状态过滤
+            if (this.filters.status !== 'all' && char.status !== this.filters.status) return false;
+            
+            // 区域过滤
+            if (this.filters.zone !== 'all' && char.zone !== this.filters.zone) return false;
+            
+            // 角色过滤
+            if (this.filters.role !== 'all' && char.role !== this.filters.role) return false;
+            
+            // 进度过滤
+            if (char.progress < this.filters.minProgress || char.progress > this.filters.maxProgress) return false;
+            
+            return true;
+        });
+        
+        this.selectedIndex = 0;
+    },
+    
+    setQuery(q) {
+        this.query = q;
+        this.search();
+    },
+    
+    setFilter(type, value) {
+        this.filters[type] = value;
+        this.search();
+    },
+    
+    draw() {
+        if (!this.show) return;
+        
+        const panelW = 450, panelH = 500;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        // 面板背景
+        ctx.fillStyle = 'rgba(29, 43, 83, 0.97)';
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        ctx.strokeStyle = COLORS.yellow;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(panelX, panelY, panelW, panelH);
+        
+        // 标题
+        ctx.fillStyle = COLORS.yellow;
+        ctx.font = 'bold 20px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('🔎 高级搜索', panelX + panelW/2, panelY + 30);
+        
+        // 搜索框
+        this.drawSearchBox(panelX, panelY, panelW);
+        
+        // 过滤器
+        this.drawFilters(panelX, panelY, panelW);
+        
+        // 结果列表
+        this.drawResults(panelX, panelY, panelW, panelH);
+        
+        // 关闭
+        ctx.fillStyle = COLORS.red;
+        ctx.font = 'bold 14px "Courier New"';
+        ctx.fillText('✕ 关闭', panelX + panelW - 45, panelY + 20);
+    },
+    
+    drawSearchBox(px, py, pw) {
+        const boxX = px + 20, boxY = py + 50;
+        const boxW = pw - 40, boxH = 35;
+        
+        ctx.fillStyle = '#222';
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+        ctx.strokeStyle = COLORS.lightGray;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(boxX, boxY, boxW, boxH);
+        
+        ctx.fillStyle = COLORS.white;
+        ctx.font = '14px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText(this.query || '🔍 输入关键词搜索...', boxX + 10, boxY + 23);
+    },
+    
+    drawFilters(px, py, pw) {
+        const startY = py + 100;
+        
+        // 状态过滤
+        ctx.fillStyle = COLORS.lightGray;
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText('状态:', px + 20, startY);
+        
+        ['all', 'working', 'idle'].forEach((s, i) => {
+            const x = px + 60 + i * 70;
+            ctx.fillStyle = this.filters.status === s ? COLORS.green : COLORS.darkGray;
+            ctx.fillRect(x, startY - 12, 55, 20);
+            ctx.fillStyle = COLORS.white;
+            ctx.font = '10px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText(s === 'all' ? '全部' : (s === 'working' ? '工作中' : '待命'), x + 27, startY + 2);
+        });
+        
+        // 角色过滤
+        ctx.fillStyle = COLORS.lightGray;
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText('角色:', px + 20, startY + 35);
+        
+        const roles = [
+            { key: 'all', label: '全部' },
+            { key: '产品', label: '产品' },
+            { key: '开发', label: '开发' },
+            { key: '测试', label: '测试' }
+        ];
+        roles.forEach((r, i) => {
+            const x = px + 60 + i * 70;
+            ctx.fillStyle = this.filters.role === r.key ? COLORS.blue : COLORS.darkGray;
+            ctx.fillRect(x, startY + 23, 55, 20);
+            ctx.fillStyle = COLORS.white;
+            ctx.font = '10px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText(r.label, x + 27, startY + 37);
+        });
+        
+        // 进度范围
+        ctx.fillStyle = COLORS.lightGray;
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText('进度:', px + 20, startY + 70);
+        
+        ctx.fillStyle = COLORS.darkGray;
+        ctx.fillRect(px + 60, startY + 58, 200, 20);
+        ctx.fillStyle = COLORS.green;
+        const progressW = (this.filters.maxProgress - this.filters.minProgress) * 2;
+        const progressX = 60 + this.filters.minProgress * 2;
+        ctx.fillRect(px + progressX, startY + 58, progressW, 20);
+        
+        ctx.fillStyle = COLORS.white;
+        ctx.font = '10px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${this.filters.minProgress}-${this.filters.maxProgress}%`, px + 160, startY + 72);
+    },
+    
+    drawResults(px, py, pw, ph) {
+        const startY = py + 200;
+        const maxResults = 6;
+        
+        ctx.fillStyle = COLORS.white;
+        ctx.font = '14px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText(`找到 ${this.results.length} 个结果:`, px + 20, startY);
+        
+        const listY = startY + 15;
+        const itemH = 40;
+        
+        this.results.slice(0, maxResults).forEach((char, i) => {
+            const y = listY + i * itemH;
+            const selected = i === this.selectedIndex;
+            
+            ctx.fillStyle = selected ? COLORS.darkBlue : '#222';
+            ctx.fillRect(px + 15, y, pw - 30, itemH - 5);
+            
+            if (selected) {
+                ctx.strokeStyle = COLORS.yellow;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px + 15, y, pw - 30, itemH - 5);
+            }
+            
+            ctx.fillStyle = char.color;
+            ctx.fillRect(px + 25, y + 8, 20, 20);
+            
+            ctx.fillStyle = COLORS.white;
+            ctx.font = '12px "Courier New"';
+            ctx.textAlign = 'left';
+            ctx.fillText(char.name, px + 50, y + 15);
+            
+            ctx.fillStyle = COLORS.lightGray;
+            ctx.font = '10px "Courier New"';
+            ctx.fillText(`${char.task} [${char.progress}%]`, px + 50, y + 28);
+            
+            // 状态图标
+            ctx.fillText(char.status === 'working' ? '💻' : '💤', px + pw - 40, y + 15);
+        });
+    },
+    
+    handleClick(x, y) {
+        if (!this.show) return false;
+        
+        const panelW = 450, panelH = 500;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        // 关闭
+        if (x > panelX + panelW - 55 && x < panelX + panelW - 10 && 
+            y > panelY + 5 && y < panelY + 25) {
+            this.show = false;
+            AudioSystem.playClick();
+            return true;
+        }
+        
+        // 搜索框
+        if (x > panelX + 20 && x < panelX + panelW - 20 &&
+            y > panelY + 50 && y < panelY + 85) {
+            // 聚焦搜索框 - 需要HTML输入
+            const input = document.getElementById('advanced-search-input');
+            if (input) {
+                input.focus();
+                return true;
+            }
+        }
+        
+        // 状态过滤器
+        const startY = panelY + 100;
+        ['all', 'working', 'idle'].forEach((s, i) => {
+            const fx = panelX + 60 + i * 70;
+            if (x > fx && x < fx + 55 && y > startY - 12 && y < startY + 8) {
+                this.filters.status = s;
+                this.search();
+                AudioSystem.playClick();
+            }
+        });
+        
+        // 角色过滤器
+        const roles = [{ key: 'all' }, { key: '产品' }, { key: '开发' }, { key: '测试' }];
+        roles.forEach((r, i) => {
+            const fx = panelX + 60 + i * 70;
+            if (x > fx && x < fx + 55 && y > startY + 23 && y < startY + 43) {
+                this.filters.role = r.key;
+                this.search();
+                AudioSystem.playClick();
+            }
+        });
+        
+        // 结果选择
+        const listY = startY + 15;
+        this.results.slice(0, 6).forEach((char, i) => {
+            const itemY = listY + i * 40;
+            if (x > panelX + 15 && x < panelX + panelW - 15 &&
+                y > itemY && y < itemY + 35) {
+                selectedCharacter = char.id;
+                showCharacterPanel(char);
+                AudioSystem.playSelect();
+            }
+        });
+        
+        return true;
+    },
+    
+    nextResult() {
+        if (this.results.length > 0) {
+            this.selectedIndex = (this.selectedIndex + 1) % this.results.length;
+        }
+    },
+    
+    prevResult() {
+        if (this.results.length > 0) {
+            this.selectedIndex = (this.selectedIndex - 1 + this.results.length) % this.results.length;
+        }
+    }
+};
+
+// ==================== 添加快捷键支持 ====================
+const KEYBOARD_SHORTCUTS_28 = {
+    'i': () => CharInteraction.toggle(),
+    'I': () => CharInteraction.toggle(),
+    'e': () => EfficiencyAnalytics.toggle(),
+    'E': () => EfficiencyAnalytics.toggle(),
+    'a': () => AdvancedSearch.toggle(),
+    'A': () => AdvancedSearch.toggle()
+};
+
+// 合并快捷键
+Object.assign(KEYBOARD_SHORTCUTS, KEYBOARD_SHORTCUTS_28);
+
+// 修改游戏循环以包含新系统
+const originalGameLoop28 = gameLoop;
+gameLoop = function() {
+    originalGameLoop28();
+    CharInteraction.update();
+};
+
+// 修改渲染函数
+const originalRender28 = render;
+render = function() {
+    originalRender28();
+    if (CharInteraction.active) CharInteraction.draw();
+    if (EfficiencyAnalytics.show) EfficiencyAnalytics.draw();
+    if (AdvancedSearch.show) AdvancedSearch.draw();
+};
+
+// 修改点击处理
+const originalHandleClick28 = handleClick;
+handleClick = function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    
+    if (CharInteraction.active && CharInteraction.handleClick(x, y)) return;
+    if (EfficiencyAnalytics.show && EfficiencyAnalytics.handleClick(x, y)) return;
+    if (AdvancedSearch.show && AdvancedSearch.handleClick(x, y)) return;
+    
+    originalHandleClick28(e);
+};
+
+// 添加HTML搜索输入框
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.createElement('input');
+    searchInput.id = 'advanced-search-input';
+    searchInput.type = 'text';
+    searchInput.placeholder = '高级搜索...';
+    searchInput.style.cssText = 'position:fixed;top:-100px;left:-100px;';
+    searchInput.addEventListener('input', (e) => {
+        AdvancedSearch.setQuery(e.target.value);
+    });
+    document.body.appendChild(searchInput);
+});
+
+// ==================== 初始化 ====================
+const originalInit28 = init;
 init = function() {
-    originalInit27();
-    FeedbackSystem.init();
-    console.log('💬 反馈系统已加载');
+    originalInit28();
+    CharInteraction.active = false;
+    EfficiencyAnalytics.generateReport();
+    console.log('🎮 迭代28功能已加载: 角色互动 | 效率分析 | 高级搜索');
+    console.log('⌨️ 新快捷键: I 角色互动 | E 效率分析 | A 高级搜索');
 };
