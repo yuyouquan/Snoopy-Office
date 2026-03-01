@@ -989,6 +989,11 @@ function gameLoop() {
     // 更新通知
     TaskNotification.update();
     
+    // 更新性能监控
+    if (window.PerformanceMonitor) {
+        PerformanceMonitor.update();
+    }
+    
     animationFrame++;
     requestAnimationFrame(gameLoop);
 }
@@ -3992,4 +3997,826 @@ init = function() {
     originalInit25();
     
     console.log('🔄 第25次迭代功能已加载: PWA + 触摸 + 通知');
+};
+
+// ==================== 迭代26: 性能优化 & 社交功能 & 数据导出 ====================
+
+// ==================== 性能监控系统 ====================
+const PerformanceMonitor = {
+    fps: 60,
+    frameCount: 0,
+    lastTime: performance.now(),
+    fpsHistory: [],
+    maxHistory: 60,
+    lowFpsCount: 0,
+    targetFps: 60,
+    autoAdjust: true,
+    
+    init() {
+        this.lastTime = performance.now();
+        console.log('📊 性能监控系统已初始化');
+    },
+    
+    update() {
+        this.frameCount++;
+        const now = performance.now();
+        const delta = now - this.lastTime;
+        
+        if (delta >= 1000) {
+            this.fps = Math.round((this.frameCount * 1000) / delta);
+            this.fpsHistory.push(this.fps);
+            if (this.fpsHistory.length > this.maxHistory) {
+                this.fpsHistory.shift();
+            }
+            
+            this.frameCount = 0;
+            this.lastTime = now;
+            
+            // 低帧率检测
+            if (this.fps < 30) {
+                this.lowFpsCount++;
+                if (this.lowFpsCount >= 3 && this.autoAdjust) {
+                    this.autoReduceQuality();
+                }
+            } else {
+                this.lowFpsCount = 0;
+            }
+            
+            // 更新UI
+            this.updateStatsUI();
+        }
+    },
+    
+    getAverageFps() {
+        if (this.fpsHistory.length === 0) return 60;
+        return Math.round(this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length);
+    },
+    
+    autoReduceQuality() {
+        // 自动降低渲染质量
+        if (window.CanvasZoomSystem) {
+            const currentScale = CanvasZoomSystem.getScale();
+            if (currentScale > 1) {
+                CanvasZoomSystem.setScale(Math.max(1, currentScale - 0.2));
+            }
+        }
+        
+        // 减少粒子效果
+        if (window.WeatherSystem && WeatherSystem.active) {
+            WeatherSystem.particles = WeatherSystem.particles.slice(0, 30);
+        }
+        
+        console.log('⚡ 自动降低渲染质量以提升性能');
+    },
+    
+    updateStatsUI() {
+        const fpsEl = document.getElementById('stat-fps');
+        if (!fpsEl) {
+            // 创建FPS显示元素
+            const statsPanel = document.querySelector('.stats-panel');
+            if (statsPanel) {
+                const fpsRow = document.createElement('div');
+                fpsRow.className = 'stat-row';
+                fpsRow.innerHTML = `<span class="stat-label">FPS:</span><span class="stat-value" id="stat-fps">${this.fps}</span>`;
+                statsPanel.appendChild(fpsRow);
+            }
+        } else {
+            fpsEl.textContent = this.fps;
+        }
+    },
+    
+    getMemoryUsage() {
+        if (performance.memory) {
+            return {
+                used: Math.round(performance.memory.usedJSHeapSize / 1048576),
+                total: Math.round(performance.memory.totalJSHeapSize / 1048576),
+                limit: Math.round(performance.memory.jsHeapSizeLimit / 1048576)
+            };
+        }
+        return null;
+    }
+};
+
+// ==================== 成就系统 ====================
+const AchievementSystem = {
+    achievements: [
+        { id: 'first_task', name: '初试牛刀', desc: '完成第一个任务', icon: '🎯', condition: (stats) => stats.totalCompleted >= 1 },
+        { id: 'ten_tasks', name: '小试身手', desc: '完成10个任务', icon: '💪', condition: (stats) => stats.totalCompleted >= 10 },
+        { id: 'hundred_tasks', name: '功勋卓著', desc: '完成100个任务', icon: '🏆', condition: (stats) => stats.totalCompleted >= 100 },
+        { id: 'early_bird', name: '早起鸟', desc: '在早晨完成任务', icon: '🌅', condition: (stats) => stats.earlyBird },
+        { id: 'night_owl', name: '夜猫子', desc: '在深夜完成任务', icon: '🦉', condition: (stats) => stats.nightOwl },
+        { id: 'team_player', name: '团队协作', desc: '所有角色同时工作', icon: '🤝', condition: (stats) => stats.maxWorking >= 8 },
+        { id: 'speed_demon', name: '闪电侠', desc: '完成任务速度最快', icon: '⚡', condition: (stats) => stats.fastestTask < 30 },
+        { id: 'explorer', name: '探索者', desc: '访问所有区域', icon: '🗺️', condition: (stats) => stats.zonesVisited >= 10 },
+        { id: 'streak_3', name: '坚持不懈', desc: '连续3天使用', icon: '🔥', condition: (stats) => stats.streak >= 3 },
+        { id: 'streak_7', name: '一周坚持', desc: '连续7天使用', icon: '💎', condition: (stats) => stats.streak >= 7 }
+    ],
+    unlocked: new Set(),
+    stats: {
+        totalCompleted: 0,
+        earlyBird: false,
+        nightOwl: false,
+        maxWorking: 0,
+        fastestTask: Infinity,
+        zonesVisited: new Set(),
+        streak: 0,
+        lastVisit: null
+    },
+    
+    init() {
+        // 加载已解锁的成就
+        const saved = localStorage.getItem('snoopy-achievements');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                this.unlocked = new Set(data.unlocked || []);
+                this.stats = { ...this.stats, ...data.stats };
+                if (data.stats?.zonesVisited) {
+                    this.stats.zonesVisited = new Set(data.stats.zonesVisited);
+                }
+            } catch (e) {
+                console.warn('加载成就数据失败:', e);
+            }
+        }
+        
+        // 更新连续访问
+        this.updateStreak();
+        
+        console.log('🏅 成就系统已初始化');
+    },
+    
+    save() {
+        const data = {
+            unlocked: Array.from(this.unlocked),
+            stats: {
+                ...this.stats,
+                zonesVisited: Array.from(this.stats.zonesVisited)
+            }
+        };
+        localStorage.setItem('snoopy-achievements', JSON.stringify(data));
+    },
+    
+    updateStreak() {
+        const today = new Date().toDateString();
+        const lastVisit = this.stats.lastVisit;
+        
+        if (lastVisit === today) {
+            return; // 今天已经访问过
+        }
+        
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        
+        if (lastVisit === yesterday) {
+            this.stats.streak++;
+        } else if (lastVisit !== today) {
+            this.stats.streak = 1;
+        }
+        
+        this.stats.lastVisit = today;
+        this.save();
+    },
+    
+    check(character, task) {
+        if (!task || task.status !== 'completed') return;
+        
+        // 更新统计
+        this.stats.totalCompleted++;
+        
+        // 检查时间相关成就
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 9) this.stats.earlyBird = true;
+        if (hour >= 22 || hour < 5) this.stats.nightOwl = true;
+        
+        // 检查任务速度
+        if (task.duration && task.duration < this.stats.fastestTask) {
+            this.stats.fastestTask = task.duration;
+        }
+        
+        // 检查区域访问
+        if (task.zone) {
+            this.stats.zonesVisited.add(task.zone);
+        }
+        
+        // 检查同时工作人数
+        const workingCount = characters.filter(c => c.status === 'working').length;
+        if (workingCount > this.stats.maxWorking) {
+            this.stats.maxWorking = workingCount;
+        }
+        
+        // 检查成就解锁
+        this.achievements.forEach(ach => {
+            if (!this.unlocked.has(ach.id) && ach.condition(this.stats)) {
+                this.unlock(ach);
+            }
+        });
+        
+        this.save();
+    },
+    
+    unlock(achievement) {
+        this.unlocked.add(achievement.id);
+        
+        // 显示通知
+        if (window.NotificationSystem && NotificationSystem.enabled) {
+            NotificationSystem.send('🏅 成就解锁！', `${achievement.icon} ${achievement.name}: ${achievement.desc}`, '/icon-192.png', 'achievement');
+        }
+        
+        // 显示成就弹窗
+        this.showUnlockPopup(achievement);
+        
+        console.log(`🏅 成就解锁: ${achievement.name}`);
+    },
+    
+    showUnlockPopup(achievement) {
+        const popup = document.createElement('div');
+        popup.className = 'achievement-popup';
+        popup.innerHTML = `
+            <div class="achievement-icon">${achievement.icon}</div>
+            <div class="achievement-text">
+                <div class="achievement-title">🏅 成就解锁！</div>
+                <div class="achievement-name">${achievement.name}</div>
+                <div class="achievement-desc">${achievement.desc}</div>
+            </div>
+        `;
+        
+        document.body.appendChild(popup);
+        
+        // 添加样式
+        if (!document.getElementById('achievement-styles')) {
+            const style = document.createElement('style');
+            style.id = 'achievement-styles';
+            style.textContent = `
+                .achievement-popup {
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: linear-gradient(135deg, #ffd700, #ffaa00);
+                    color: #333;
+                    padding: 16px 24px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                    animation: achievementSlideIn 0.5s ease-out, achievementFadeOut 0.5s ease-in 3s forwards;
+                    z-index: 10000;
+                }
+                .achievement-icon {
+                    font-size: 40px;
+                }
+                .achievement-title {
+                    font-size: 12px;
+                    opacity: 0.8;
+                }
+                .achievement-name {
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+                .achievement-desc {
+                    font-size: 12px;
+                    opacity: 0.8;
+                }
+                @keyframes achievementSlideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes achievementFadeOut {
+                    to { opacity: 0; transform: translateY(20px); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // 3秒后移除
+        setTimeout(() => popup.remove(), 3500);
+    },
+    
+    showPanel() {
+        const panel = document.createElement('div');
+        panel.id = 'achievement-panel';
+        panel.className = 'panel';
+        
+        let html = `
+            <div class="panel-header">
+                <h2>🏅 成就</h2>
+                <button class="close-btn" onclick="this.closest('.panel').remove()">×</button>
+            </div>
+            <div class="panel-content achievement-list">
+        `;
+        
+        this.achievements.forEach(ach => {
+            const unlocked = this.unlocked.has(ach.id);
+            html += `
+                <div class="achievement-item ${unlocked ? 'unlocked' : 'locked'}">
+                    <div class="achievement-icon">${unlocked ? ach.icon : '🔒'}</div>
+                    <div class="achievement-info">
+                        <div class="achievement-name">${ach.name}</div>
+                        <div class="achievement-desc">${ach.desc}</div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        
+        // 添加样式
+        if (!document.getElementById('achievement-panel-styles')) {
+            const style = document.createElement('style');
+            style.id = 'achievement-panel-styles';
+            style.textContent = `
+                .achievement-list {
+                    max-height: 400px;
+                    overflow-y: auto;
+                }
+                .achievement-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px;
+                    border-bottom: 1px solid var(--border);
+                    opacity: 0.5;
+                }
+                .achievement-item.unlocked {
+                    opacity: 1;
+                    background: rgba(255, 215, 0, 0.1);
+                }
+                .achievement-item .achievement-icon {
+                    font-size: 32px;
+                }
+                .achievement-item .achievement-name {
+                    font-weight: bold;
+                    color: var(--text-primary);
+                }
+                .achievement-item .achievement-desc {
+                    font-size: 12px;
+                    color: var(--text-secondary);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        panel.innerHTML = html;
+        document.querySelector('main').appendChild(panel);
+    },
+    
+    toggle() {
+        const existing = document.getElementById('achievement-panel');
+        if (existing) {
+            existing.remove();
+        } else {
+            this.showPanel();
+        }
+        AudioSystem.playClick();
+    }
+};
+
+// ==================== 每日挑战系统 ====================
+const DailyChallengeSystem = {
+    challenges: [
+        { id: 'complete_5', name: '日理万机', desc: '完成5个任务', target: 5, type: 'complete' },
+        { id: 'all_working', name: '全员出动', desc: '让所有角色同时工作', target: 8, type: 'simultaneous' },
+        { id: 'zone_visit', name: '跑马观花', desc: '访问5个不同区域', target: 5, type: 'zones' },
+        { id: 'focus_time', name: '专注时刻', desc: '持续工作30分钟', target: 30, type: 'focus' },
+        { id: 'no_idle', name: '拒绝摸鱼', desc: '2小时内没有角色空闲', target: 120, type: 'no_idle' }
+    ],
+    todayProgress: {},
+    lastDate: null,
+    
+    init() {
+        this.load();
+        
+        // 检查是否新的一天
+        const today = new Date().toDateString();
+        if (this.lastDate !== today) {
+            this.resetDaily();
+        }
+        
+        console.log('🎯 每日挑战系统已初始化');
+    },
+    
+    load() {
+        const saved = localStorage.getItem('snoopy-daily-challenges');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                this.todayProgress = data.progress || {};
+                this.lastDate = data.date;
+            } catch (e) {
+                console.warn('加载每日挑战数据失败:', e);
+            }
+        }
+    },
+    
+    save() {
+        localStorage.setItem('snoopy-daily-challenges', JSON.stringify({
+            progress: this.todayProgress,
+            date: new Date().toDateString()
+        }));
+    },
+    
+    resetDaily() {
+        this.todayProgress = {};
+        this.challenges.forEach(c => {
+            this.todayProgress[c.id] = 0;
+        });
+        this.lastDate = new Date().toDateString();
+        this.save();
+    },
+    
+    update(type, value = 1) {
+        const today = new Date().toDateString();
+        if (this.lastDate !== today) {
+            this.resetDaily();
+        }
+        
+        // 更新相关挑战进度
+        this.challenges.forEach(c => {
+            if (c.type === type || (type === 'complete' && c.type === 'complete')) {
+                if (!this.todayProgress[c.id]) this.todayProgress[c.id] = 0;
+                this.todayProgress[c.id] += value;
+                
+                // 检查完成
+                if (this.todayProgress[c.id] >= c.target && !this.isCompleted(c.id)) {
+                    this.onComplete(c);
+                }
+            }
+        });
+        
+        this.save();
+        this.updateUI();
+    },
+    
+    isCompleted(id) {
+        return localStorage.getItem(`snoopy-challenge-${id}-${this.lastDate}`) === 'true';
+    },
+    
+    onComplete(challenge) {
+        localStorage.setItem(`snoopy-challenge-${challenge.id}-${this.lastDate}`, 'true');
+        
+        if (NotificationSystem && NotificationSystem.enabled) {
+            NotificationSystem.send('🎯 每日挑战完成！', `${challenge.name}: ${challenge.desc}`, '/icon-192.png', 'challenge');
+        }
+        
+        console.log(`🎯 每日挑战完成: ${challenge.name}`);
+    },
+    
+    updateUI() {
+        let panel = document.getElementById('daily-challenge-panel');
+        
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'daily-challenge-panel';
+            panel.className = 'panel';
+            
+            // 添加样式
+            const style = document.createElement('style');
+            style.textContent = `
+                #daily-challenge-panel {
+                    position: absolute;
+                    top: 70px;
+                    right: 10px;
+                    width: 220px;
+                    z-index: 100;
+                }
+                .challenge-item {
+                    padding: 8px;
+                    margin: 4px 0;
+                    background: var(--bg-panel);
+                    border-radius: 6px;
+                    font-size: 12px;
+                }
+                .challenge-item.completed {
+                    background: rgba(0, 228, 54, 0.2);
+                    border: 1px solid #00e436;
+                }
+                .challenge-progress {
+                    height: 4px;
+                    background: var(--border);
+                    border-radius: 2px;
+                    margin-top: 4px;
+                }
+                .challenge-progress-fill {
+                    height: 100%;
+                    background: #00e436;
+                    border-radius: 2px;
+                    transition: width 0.3s;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.querySelector('main').appendChild(panel);
+        }
+        
+        let html = `
+            <div class="panel-header">
+                <h2>🎯 今日挑战</h2>
+                <button class="close-btn" onclick="this.closest('.panel').remove()">×</button>
+            </div>
+            <div class="panel-content">
+        `;
+        
+        this.challenges.forEach(c => {
+            const progress = this.todayProgress[c.id] || 0;
+            const completed = progress >= c.target;
+            const percent = Math.min(100, (progress / c.target) * 100);
+            
+            html += `
+                <div class="challenge-item ${completed ? 'completed' : ''}">
+                    <div>${c.name} ${completed ? '✅' : ''}</div>
+                    <div style="opacity: 0.6; font-size: 10px;">${c.desc}</div>
+                    <div class="challenge-progress">
+                        <div class="challenge-progress-fill" style="width: ${percent}%"></div>
+                    </div>
+                    <div style="font-size: 10px; text-align: right;">${progress}/${c.target}</div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        panel.innerHTML = html;
+    },
+    
+    toggle() {
+        const panel = document.getElementById('daily-challenge-panel');
+        if (panel) {
+            panel.remove();
+        } else {
+            this.updateUI();
+        }
+        AudioSystem.playClick();
+    }
+};
+
+// ==================== 数据导出系统 ====================
+const DataExportSystem = {
+    exportData: null,
+    
+    init() {
+        console.log('📦 数据导出系统已初始化');
+    },
+    
+    // 收集所有数据
+    collectData() {
+        const data = {
+            exportDate: new Date().toISOString(),
+            summary: {
+                totalCharacters: characters.length,
+                totalTasks: CharacterSystem.taskHistory.length,
+                totalZones: Object.keys(ZONES).length
+            },
+            characters: characters.map(c => ({
+                id: c.id,
+                name: c.name,
+                role: c.role,
+                status: c.status,
+                currentTask: c.currentTask?.name || null,
+                taskCount: CharacterSystem.taskHistory.filter(t => t.characterId === c.id).length,
+                zones: [...new Set(CharacterSystem.taskHistory.filter(t => t.characterId === c.id).map(t => t.zone))]
+            })),
+            tasks: CharacterSystem.taskHistory.map(t => ({
+                ...t,
+                timestamp: t.timestamp?.toISOString()
+            })),
+            achievements: {
+                unlocked: Array.from(AchievementSystem.unlocked),
+                stats: {
+                    ...AchievementSystem.stats,
+                    zonesVisited: Array.from(AchievementSystem.stats.zonesVisited)
+                }
+            },
+            dailyChallenges: DailyChallengeSystem.todayProgress,
+            performance: {
+                averageFps: PerformanceMonitor.getAverageFps(),
+                memory: PerformanceMonitor.getMemoryUsage()
+            }
+        };
+        
+        return data;
+    },
+    
+    // 导出JSON
+    exportJSON() {
+        const data = this.collectData();
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `snoopy-office-export-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        
+        URL.revokeObjectURL(url);
+        
+        console.log('📦 已导出JSON数据');
+        if (NotificationSystem && NotificationSystem.enabled) {
+            NotificationSystem.send('📦 数据已导出', 'JSON文件下载开始', '/icon-192.png', 'export');
+        }
+    },
+    
+    // 生成工作摘要报告
+    generateReport() {
+        const data = this.collectData();
+        const today = new Date().toLocaleDateString('zh-CN');
+        
+        // 计算统计数据
+        const completedTasks = data.tasks.filter(t => t.status === 'completed');
+        const workingCharacters = data.characters.filter(c => c.status === 'working');
+        
+        let report = `# 📊 Snoopy-Office 工作摘要
+
+**生成时间**: ${today}
+**导出时间**: ${data.exportDate}
+
+---
+
+## 📈 概览
+
+- **角色总数**: ${data.summary.totalCharacters}
+- **今日完成任务**: ${completedTasks.length}
+- **当前工作中**: ${workingCharacters.length}
+- **访问区域数**: ${data.achievements.stats.zonesVisited?.size || 0}
+
+---
+
+## 👥 角色状态
+
+| 角色 | 状态 | 任务数 | 当前任务 |
+|------|------|--------|----------|
+${data.characters.map(c => `| ${c.name} | ${c.status === 'working' ? '💼 工作' : '😴 待命'} | ${c.taskCount} | ${c.currentTask || '-'} |`).join('\n')}
+
+---
+
+## 🏅 成就进度
+
+- **已解锁**: ${data.achievements.unlocked.length} / ${AchievementSystem.achievements.length}
+- **完成任务总数**: ${data.achievements.stats.totalCompleted}
+- **连续访问**: ${data.achievements.stats.streak} 天
+
+---
+
+## 🎯 今日挑战
+
+${DailyChallengeSystem.challenges.map(c => {
+    const progress = data.dailyChallenges[c.id] || 0;
+    const completed = progress >= c.target;
+    return `- [${completed ? 'x' : ' '}] ${c.name}: ${progress}/${c.target}`;
+}).join('\n')}
+
+---
+
+## 📊 性能数据
+
+- **平均FPS**: ${data.performance.averageFps}
+- **内存使用**: ${data.performance.memory ? `${data.performance.memory.used}MB / ${data.performance.memory.total}MB` : '不支持'}
+
+---
+
+*由 Snoopy-Office 自动生成*
+`;
+        
+        return report;
+    },
+    
+    // 导出Markdown报告
+    exportReport() {
+        const report = this.generateReport();
+        const blob = new Blob([report], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `snoopy-office-report-${new Date().toISOString().split('T')[0]}.md`;
+        a.click();
+        
+        URL.revokeObjectURL(url);
+        
+        console.log('📊 已导出工作报告');
+        if (NotificationSystem && NotificationSystem.enabled) {
+            NotificationSystem.send('📊 报告已生成', 'Markdown文件下载开始', '/icon-192.png', 'export');
+        }
+    },
+    
+    // 分享数据（生成可分享的链接）
+    async share() {
+        const data = this.collectData();
+        
+        // 使用JSONBin.io或类似的免费JSON存储服务
+        // 这里我们使用data:URI生成一个临时的分享
+        const json = JSON.stringify(data);
+        const encoded = btoa(unescape(encodeURIComponent(json)));
+        
+        // 复制到剪贴板
+        try {
+            await navigator.clipboard.writeText(`Snoopy-Office 数据: ${encoded.substring(0, 50)}...`);
+            console.log('📋 数据已复制到剪贴板');
+            alert('数据已复制到剪贴板！');
+        } catch (e) {
+            console.error('复制失败:', e);
+        }
+    },
+    
+    // 显示导出面板
+    showPanel() {
+        const panel = document.createElement('div');
+        panel.id = 'export-panel';
+        panel.className = 'panel';
+        panel.innerHTML = `
+            <div class="panel-header">
+                <h2>📦 数据导出</h2>
+                <button class="close-btn" onclick="this.closest('.panel').remove()">×</button>
+            </div>
+            <div class="panel-content">
+                <button class="sound-btn" onclick="DataExportSystem.exportJSON()">📋 导出JSON</button>
+                <button class="sound-btn" onclick="DataExportSystem.exportReport()">📊 导出报告</button>
+                <button class="sound-btn" onclick="DataExportSystem.share()">🔗 分享数据</button>
+            </div>
+        `;
+        
+        document.querySelector('main').appendChild(panel);
+    },
+    
+    toggle() {
+        const panel = document.getElementById('export-panel');
+        if (panel) {
+            panel.remove();
+        } else {
+            this.showPanel();
+        }
+        AudioSystem.playClick();
+    }
+};
+
+// ==================== 增强任务完成检测 ====================
+const originalCheckTaskComplete = function(character) {
+    // 原有的任务完成检测逻辑
+    if (character.currentTask && character.currentTask.status === 'working') {
+        character.currentTask.progress += 0.5 * speed;
+        
+        if (character.currentTask.progress >= 100) {
+            character.currentTask.status = 'completed';
+            character.currentTask.completedAt = new Date();
+            
+            // 完成任务
+            CharacterSystem.addTaskHistory(character, {
+                ...character.currentTask,
+                status: 'completed',
+                completedAt: new Date().toISOString()
+            });
+            
+            // 成就系统检测
+            if (window.AchievementSystem) {
+                AchievementSystem.check(character, character.currentTask);
+            }
+            
+            // 每日挑战检测
+            if (window.DailyChallengeSystem) {
+                DailyChallengeSystem.update('complete');
+            }
+            
+            // 播放完成音效
+            AudioSystem.playTaskComplete();
+            
+            // 烟花效果
+            if (window.FireworkSystem) {
+                FireworkSystem.create(character.x, character.y);
+            }
+            
+            // 设置下一个任务
+            setTimeout(() => {
+                if (character.status === 'working') {
+                    CharacterSystem.assignTask(character);
+                }
+            }, 1000);
+            
+            return true;
+        }
+    }
+    return false;
+};
+
+// 覆盖原有的任务完成检测
+if (typeof checkTaskComplete === 'function') {
+    window.originalCheckTaskComplete = checkTaskComplete;
+    checkTaskComplete = function(character) {
+        const result = originalCheckTaskComplete(character);
+        if (result && window.AchievementSystem) {
+            AchievementSystem.check(character, character.currentTask);
+        }
+        return result;
+    };
+}
+
+// ==================== 更新初始化函数 ====================
+const originalInit26 = init;
+init = function() {
+    originalInit26();
+    
+    // 初始化第26次迭代系统
+    PerformanceMonitor.init();
+    AchievementSystem.init();
+    DailyChallengeSystem.init();
+    DataExportSystem.init();
+    
+    console.log('🔄 第26次迭代功能已加载: 性能监控 + 成就系统 + 每日挑战 + 数据导出');
 };
