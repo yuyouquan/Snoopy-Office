@@ -2,8 +2,13 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#16213e">
+    <meta name="description" content="Snoopy-Office 像素风格AI助手状态可视化Web应用">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Snoopy-Office 像素办公室</title>
+    <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="frontend/style.css">
 </head>
 <body>
@@ -119,5 +124,49 @@
     </div>
     
     <script src="frontend/game.js"></script>
+    
+    <!-- PWA Service Worker 注册 -->
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('SW registered:', registration.scope);
+                })
+                .catch(error => {
+                    console.log('SW registration failed:', error);
+                });
+        });
+    }
+    
+    // 请求通知权限
+    function requestNotificationPermission() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().then(permission => {
+                console.log('Notification permission:', permission);
+            });
+        }
+    }
+    
+    // 触摸设备上自动请求通知权限
+    if ('ontouchstart' in window) {
+        document.addEventListener('touchstart', function once() {
+            requestNotificationPermission();
+            document.removeEventListener('touchstart', once);
+        }, { once: true });
+    }
+    
+    // 发送通知函数
+    function sendNotification(title, body, icon = '/icon-192.png') {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(title, {
+                body: body,
+                icon: icon,
+                badge: '/icon-192.png',
+                tag: 'snoopy-office'
+            });
+        }
+    }
+    </script>
 </body>
 </html>

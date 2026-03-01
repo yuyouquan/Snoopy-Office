@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snoopy-Office - 离线</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    .pixel-art {
+      width: 128px;
+      height: 128px;
+      margin: 0 auto 30px;
+      image-rendering: pixelated;
+      animation: bounce 1s infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #e94560;
+    }
+    p {
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+      color: #aaa;
+    }
+    .btn {
+      display: inline-block;
+      padding: 15px 30px;
+      background: #0f3460;
+      color: #fff;
+      border: 2px solid #e94560;
+      font-family: inherit;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      background: #e94560;
+    }
+    .tips {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      text-align: left;
+    }
+    .tips h3 {
+      font-size: 14px;
+      color: #e94560;
+      margin-bottom: 10px;
+    }
+    .tips ul {
+      list-style: none;
+      font-size: 12px;
+      color: #888;
+    }
+    .tips li {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <canvas class="pixel-art" id="offlineChar"></canvas>
+    <h1>📡 暂时离线</h1>
+    <p>看起来网络连接中断了。不过别担心，你可以稍后再来，或者检查网络设置。</p>
+    <button class="btn" onclick="location.reload()">重试连接</button>
+    
+    <div class="tips">
+      <h3>💡 离线提示</h3>
+      <ul>
+        <li>• 再次打开时将自动连接</li>
+        <li>• 之前保存的数据不会丢失</li>
+        <li>• 尝试刷新页面或检查网络</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Draw a simple pixel character
+    const canvas = document.getElementById('offlineChar');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 128;
+    canvas.height = 128;
+    
+    // PICO-8 colors
+    const colors = {
+      skin: '#ffccaa',
+      hair: '#333344',
+      shirt: '#e94560',
+      eyes: '#000000'
+    };
+    
+    function drawPixelChar() {
+      ctx.clearRect(0, 0, 128, 128);
+      
+      // Head
+      ctx.fillStyle = colors.skin;
+      ctx.fillRect(40, 20, 48, 40);
+      
+      // Hair
+      ctx.fillStyle = colors.hair;
+      ctx.fillRect(36, 16, 56, 16);
+      
+      // Eyes
+      ctx.fillStyle = colors.eyes;
+      ctx.fillRect(50, 36, 8, 8);
+      ctx.fillRect(70, 36, 8, 8);
+      
+      // Body/Shirt
+      ctx.fillStyle = colors.shirt;
+      ctx.fillRect(32, 60, 64, 48);
+      
+      // Arms
+      ctx.fillStyle = colors.skin;
+      ctx.fillRect(16, 60, 16, 32);
+      ctx.fillRect(96, 60, 16, 32);
+    }
+    
+    drawPixelChar();
+  </script>
+</body>
+</html>

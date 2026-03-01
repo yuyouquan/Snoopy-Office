@@ -3613,6 +3613,15 @@ const ITERATION24_SHORTCUTS = {
 // 合并快捷键
 Object.assign(KEYBOARD_SHORTCUTS, ITERATION24_SHORTCUTS);
 
+// ==================== 迭代25: 快捷键更新 ====================
+const ITERATION25_SHORTCUTS = {
+    'Alt-n': () => NotificationSystem.requestPermission(),  // 请求通知权限
+    'Alt-p': () => { if (window.CanvasZoomSystem) CanvasZoomSystem.reset(); }  // 重置缩放
+};
+
+// 合并快捷键
+Object.assign(KEYBOARD_SHORTCUTS, ITERATION25_SHORTCUTS);
+
 // ==================== 按钮更新 ====================
 // 更新 DOMContentLoaded 以添加新按钮
 const originalDOMReady = document.addEventListener('DOMContentLoaded', () => {
@@ -3688,3 +3697,299 @@ init = function() {
 
 // ==================== 初始化完成 ====================
 window.onload = init;
+
+// ==================== 迭代25: PWA支持 & 触摸手势 & 通知系统 ====================
+
+// ==================== 触摸手势系统 ====================
+const TouchGestureSystem = {
+    enabled: 'ontouchstart' in window,
+    touchStartX: 0,
+    touchStartY: 0,
+    touchStartTime: 0,
+    doubleTapDelay: 300,
+    lastTapTime: 0,
+    isDragging: false,
+    dragStartX: 0,
+    dragStartY: 0,
+    pinchStartDistance: 0,
+    currentScale: 1,
+    
+    init() {
+        if (!this.enabled) return;
+        
+        const canvas = document.getElementById('office');
+        if (!canvas) return;
+        
+        // 单指点击
+        canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+        canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+        
+        // 双指缩放
+        canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+        
+        // 防止默认滚动
+        canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        
+        console.log('👆 触摸手势系统已初始化');
+    },
+    
+    handleTouchStart(e) {
+        e.preventDefault();
+        
+        if (e.touches.length === 1) {
+            this.touchStartX = e.touches[0].clientX;
+            this.touchStartY = e.touches[0].clientY;
+            this.touchStartTime = Date.now();
+            this.isDragging = true;
+            this.dragStartX = this.touchStartX;
+            this.dragStartY = this.touchStartY;
+        } else if (e.touches.length === 2) {
+            // 双指缩放
+            this.pinchStartDistance = this.getDistance(
+                e.touches[0].clientX, e.touches[0].clientY,
+                e.touches[1].clientX, e.touches[1].clientY
+            );
+        }
+    },
+    
+    handleTouchMove(e) {
+        if (e.touches.length === 2) {
+            // 缩放处理
+            const currentDistance = this.getDistance(
+                e.touches[0].clientX, e.touches[0].clientY,
+                e.touches[1].clientX, e.touches[1].clientY
+            );
+            
+            if (this.pinchStartDistance > 0) {
+                const scale = currentDistance / this.pinchStartDistance;
+                const newScale = Math.max(0.5, Math.min(3, this.currentScale * scale));
+                
+                // 应用缩放
+                if (window.CanvasZoomSystem) {
+                    CanvasZoomSystem.setScale(newScale);
+                }
+                
+                this.pinchStartDistance = currentDistance;
+            }
+        }
+    },
+    
+    handleTouchEnd(e) {
+        const touchDuration = Date.now() - this.touchStartTime;
+        const touchDistance = this.getDistance(
+            this.touchStartX, this.touchStartY,
+            this.dragStartX, this.dragStartY
+        );
+        
+        // 检测双击
+        const now = Date.now();
+        if (now - this.lastTapTime < this.doubleTapTime) {
+            // 双击 - 复位缩放
+            if (window.CanvasZoomSystem) {
+                CanvasZoomSystem.reset();
+            }
+            this.lastTapTime = 0;
+            return;
+        }
+        this.lastTapTime = now;
+        
+        // 检测点击 vs 拖拽
+        if (touchDuration < 300 && touchDistance < 10) {
+            // 短按 - 点击角色
+            const canvas = document.getElementById('office');
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const x = (e.changedTouches[0].clientX - rect.left) * scaleX;
+            const y = (e.changedTouches[0].clientY - rect.top) * scaleY;
+            
+            handleCanvasClick(x, y);
+        }
+        
+        this.isDragging = false;
+    },
+    
+    getDistance(x1, y1, x2, y2) {
+        return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+    },
+    
+    get doubleTapTime() {
+        return this.doubleTapDelay;
+    }
+};
+
+// ==================== 通知系统 ====================
+const NotificationSystem = {
+    permission: 'default',
+    enabled: false,
+    taskNotifications: new Map(),
+    
+    init() {
+        if (!('Notification' in window)) {
+            console.warn('通知系统不可用');
+            return;
+        }
+        
+        this.permission = Notification.permission;
+        this.enabled = this.permission === 'granted';
+        
+        if (this.permission === 'default') {
+            // 延迟请求权限，让用户先交互
+            setTimeout(() => this.requestPermission(), 3000);
+        }
+    },
+    
+    requestPermission() {
+        if (this.permission !== 'default') return;
+        
+        Notification.requestPermission().then(permission => {
+            this.permission = permission;
+            this.enabled = permission === 'granted';
+            console.log('通知权限:', permission);
+            
+            if (this.enabled) {
+                this.send('Snoopy-Office', '通知系统已启用！🔔');
+            }
+        });
+    },
+    
+    send(title, body, icon = '/icon-192.png', tag = 'snoopy-office') {
+        if (!this.enabled) return false;
+        
+        try {
+            new Notification(title, {
+                body: body,
+                icon: icon,
+                badge: '/icon-192.png',
+                tag: tag,
+                requireInteraction: false,
+                vibrate: [100, 50, 100]
+            });
+            return true;
+        } catch (e) {
+            console.warn('发送通知失败:', e);
+            return false;
+        }
+    },
+    
+    // 任务状态变化通知
+    onTaskChange(character, oldTask, newTask) {
+        if (!this.enabled || character.id === 'ai') return;
+        
+        // 避免重复通知
+        const key = `${character.id}-${newTask.id}`;
+        if (this.taskNotifications.has(key)) return;
+        
+        let message = '';
+        if (newTask.status === 'working') {
+            message = `${character.name} 开始新任务: ${newTask.name}`;
+            this.send('任务开始', message, '/icon-192.png', `task-${character.id}`);
+        } else if (newTask.status === 'completed') {
+            message = `${character.name} 完成任务: ${newTask.name}`;
+            this.send('✅ 任务完成', message, '/icon-192.png', `task-${character.id}`);
+            this.taskNotifications.set(key, true);
+            
+            // 清理旧通知记录
+            setTimeout(() => this.taskNotifications.delete(key), 60000);
+        }
+    },
+    
+    // 角色状态变化通知
+    onStatusChange(character, oldStatus, newStatus) {
+        if (!this.enabled) return;
+        
+        if (oldStatus === 'idle' && newStatus === 'working') {
+            this.send('💼 开始工作', `${character.name} 开始工作了`, '/icon-192.png', `status-${character.id}`);
+        } else if (oldStatus === 'working' && newStatus === 'idle') {
+            this.send('✅ 休息一下', `${character.name} 休息了`, '/icon-192.png', `status-${character.id}`);
+        }
+    }
+};
+
+// ==================== PWA 离线检测 ====================
+const NetworkStatusSystem = {
+    online: true,
+    
+    init() {
+        this.online = navigator.onLine;
+        
+        window.addEventListener('online', () => {
+            this.online = true;
+            this.updateStatusUI();
+            console.log('🟢 网络已连接');
+            
+            // 同步数据
+            if (window.PersistenceSystem) {
+                PersistenceSystem.sync();
+            }
+        });
+        
+        window.addEventListener('offline', () => {
+            this.online = false;
+            this.updateStatusUI();
+            console.log('🔴 网络已断开');
+        });
+    },
+    
+    updateStatusUI() {
+        const statusEl = document.getElementById('connection');
+        if (statusEl) {
+            statusEl.textContent = this.online ? '🟢 已连接' : '🔴 离线';
+            statusEl.className = this.online ? '' : 'offline';
+        }
+    },
+    
+    isOnline() {
+        return this.online;
+    }
+};
+
+// ==================== 更新原初始化函数 ====================
+const originalDOMReady25 = document.addEventListener('DOMContentLoaded', () => {
+    // 原有代码...
+    
+    // 初始化新系统
+    TouchGestureSystem.init();
+    NotificationSystem.init();
+    NetworkStatusSystem.init();
+    
+    // 更新工具栏添加通知按钮
+    const toolbar = document.querySelector('.status-bar');
+    if (toolbar) {
+        // 通知权限按钮
+        const notifyBtn = document.createElement('button');
+        notifyBtn.id = 'notify-toggle';
+        notifyBtn.className = 'sound-btn';
+        notifyBtn.textContent = '🔔';
+        notifyBtn.title = '启用通知';
+        notifyBtn.onclick = () => {
+            NotificationSystem.requestPermission();
+        };
+        toolbar.insertBefore(notifyBtn, toolbar.children[toolbar.children.length - 1]);
+        
+        // PWA 安装按钮（仅显示一次）
+        if ('serviceWorker' in navigator && navigator.standalone === false) {
+            const installBtn = document.createElement('button');
+            installBtn.id = 'pwa-install';
+            installBtn.className = 'sound-btn';
+            installBtn.textContent = '📲';
+            installBtn.title = '安装应用到桌面';
+            installBtn.onclick = () => {
+                // 提示安装 PWA
+                if (confirm('是否将 Snoopy-Office 安装到桌面？')) {
+                    requestNotificationPermission();
+                }
+            };
+            toolbar.insertBefore(installBtn, toolbar.children[toolbar.children.length - 1]);
+        }
+    }
+});
+
+// 合并到 init
+const originalInit25 = init;
+init = function() {
+    originalInit25();
+    
+    console.log('🔄 第25次迭代功能已加载: PWA + 触摸 + 通知');
+};
