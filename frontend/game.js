@@ -4820,3 +4820,258 @@ init = function() {
     
     console.log('🔄 第26次迭代功能已加载: 性能监控 + 成就系统 + 每日挑战 + 数据导出');
 };
+
+// ==================== 用户反馈系统 ====================
+const FeedbackSystem = {
+    panel: null,
+    isVisible: false,
+    
+    init: function() {
+        this.createPanel();
+        this.bindKeyboard();
+    },
+    
+    createPanel: function() {
+        const panel = document.createElement('div');
+        panel.id = 'feedback-panel';
+        panel.className = 'panel hidden';
+        panel.innerHTML = `
+            <div class="panel-header">
+                <h2>💬 反馈建议</h2>
+                <button class="close-btn" onclick="FeedbackSystem.hide()">×</button>
+            </div>
+            <div class="panel-content">
+                <div class="feedback-type">
+                    <label>反馈类型:</label>
+                    <select id="feedback-type">
+                        <option value="bug">🐛 报告问题</option>
+                        <option value="feature">✨ 功能建议</option>
+                        <option value="improvement">💡 改进意见</option>
+                        <option value="other">💬 其他</option>
+                    </select>
+                </div>
+                <div class="feedback-content">
+                    <label>详细内容:</label>
+                    <textarea id="feedback-text" placeholder="请描述您的建议或问题..." rows="5"></textarea>
+                </div>
+                <div class="feedback-contact">
+                    <label>联系方式 (可选):</label>
+                    <input type="text" id="feedback-contact" placeholder="邮箱或其他联系方式">
+                </div>
+                <div class="feedback-actions">
+                    <button class="sound-btn" onclick="FeedbackSystem.submit()">📨 提交反馈</button>
+                    <button class="sound-btn" onclick="FeedbackSystem.hide()">取消</button>
+                </div>
+                <div class="feedback-history">
+                    <h3>历史反馈</h3>
+                    <div id="feedback-list"></div>
+                </div>
+            </div>
+        `;
+        document.querySelector('main').appendChild(panel);
+        this.panel = panel;
+        this.loadHistory();
+    },
+    
+    bindKeyboard: function() {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'q' || e.key === 'Q') {
+                if (!e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    this.toggle();
+                }
+            }
+        });
+    },
+    
+    toggle: function() {
+        if (this.isVisible) {
+            this.hide();
+        } else {
+            this.show();
+        }
+    },
+    
+    show: function() {
+        if (this.panel) {
+            this.panel.classList.remove('hidden');
+            this.isVisible = true;
+            playSound('click');
+        }
+    },
+    
+    hide: function() {
+        if (this.panel) {
+            this.panel.classList.add('hidden');
+            this.isVisible = false;
+        }
+    },
+    
+    submit: function() {
+        const type = document.getElementById('feedback-type').value;
+        const text = document.getElementById('feedback-text').value.trim();
+        const contact = document.getElementById('feedback-contact').value.trim();
+        
+        if (!text) {
+            alert('请输入反馈内容');
+            return;
+        }
+        
+        const feedback = {
+            id: Date.now(),
+            type: type,
+            text: text,
+            contact: contact,
+            timestamp: new Date().toISOString()
+        };
+        
+        // 保存到localStorage
+        const history = JSON.parse(localStorage.getItem('feedbackHistory') || '[]');
+        history.unshift(feedback);
+        localStorage.setItem('feedbackHistory', JSON.stringify(history.slice(0, 10)));
+        
+        // 显示成功消息
+        alert('感谢您的反馈！🎉');
+        
+        // 清空表单
+        document.getElementById('feedback-text').value = '';
+        document.getElementById('feedback-contact').value = '';
+        
+        // 刷新历史记录
+        this.loadHistory();
+        
+        playSound('success');
+    },
+    
+    loadHistory: function() {
+        const history = JSON.parse(localStorage.getItem('feedbackHistory') || '[]');
+        const list = document.getElementById('feedback-list');
+        
+        if (!list) return;
+        
+        if (history.length === 0) {
+            list.innerHTML = '<p class="empty-message">暂无反馈记录</p>';
+            return;
+        }
+        
+        list.innerHTML = history.map(f => `
+            <div class="feedback-item">
+                <div class="feedback-item-header">
+                    <span class="feedback-type-badge">${this.getTypeLabel(f.type)}</span>
+                    <span class="feedback-time">${new Date(f.timestamp).toLocaleDateString()}</span>
+                </div>
+                <p class="feedback-item-text">${f.text}</p>
+            </div>
+        `).join('');
+    },
+    
+    getTypeLabel: function(type) {
+        const labels = {
+            bug: '🐛 问题',
+            feature: '✨ 建议',
+            improvement: '💡 改进',
+            other: '💬 其他'
+        };
+        return labels[type] || '💬 其他';
+    }
+};
+
+// 添加CSS样式
+const feedbackStyle = document.createElement('style');
+feedbackStyle.textContent = `
+    #feedback-panel {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 400px;
+        max-width: 90vw;
+        max-height: 80vh;
+        overflow-y: auto;
+        z-index: 1000;
+    }
+    
+    .feedback-type, .feedback-content, .feedback-contact {
+        margin-bottom: 15px;
+    }
+    
+    .feedback-type label, .feedback-content label, .feedback-contact label {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--text);
+        font-weight: bold;
+    }
+    
+    #feedback-type, #feedback-text, #feedback-contact {
+        width: 100%;
+        padding: 8px;
+        border: 2px solid var(--border);
+        border-radius: 4px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: inherit;
+    }
+    
+    #feedback-text {
+        resize: vertical;
+        min-height: 100px;
+    }
+    
+    .feedback-actions {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .feedback-history h3 {
+        margin: 15px 0 10px;
+        color: var(--text);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 5px;
+    }
+    
+    .feedback-item {
+        padding: 10px;
+        background: var(--bg);
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+    
+    .feedback-item-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+    }
+    
+    .feedback-type-badge {
+        font-size: 0.8rem;
+        padding: 2px 6px;
+        background: var(--accent);
+        border-radius: 3px;
+    }
+    
+    .feedback-time {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+    
+    .feedback-item-text {
+        font-size: 0.85rem;
+        color: var(--text);
+        margin: 0;
+    }
+    
+    .empty-message {
+        text-align: center;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+`;
+document.head.appendChild(feedbackStyle);
+
+// 修改初始化函数以包含反馈系统
+const originalInit27 = init;
+init = function() {
+    originalInit27();
+    FeedbackSystem.init();
+    console.log('💬 反馈系统已加载');
+};
