@@ -293,12 +293,207 @@ let lastDate = new Date().toDateString(); // 上次更新日期
 const API_CONFIG = {
     // 本地API端点
     localEndpoint: '/api/status',
+    // SSE实时推送端点
+    sseEndpoint: '/api/sse',
     // 静态JSON fallback (放在根目录避免SPA路由问题)
     staticEndpoint: '/static-data.json',
     // 模拟数据间隔
     simulationInterval: 5000,
+    // SSE重试间隔
+    sseReconnectInterval: 5000,
     // 重试次数
     maxRetries: 3
+};
+
+// ==================== SSE 实时推送系统 (Iteration 20) ====================
+const SSESystem = {
+    eventSource: null,
+    connected: false,
+    reconnectTimer: null,
+    lastUpdate: null,
+    
+    connect() {
+        if (this.eventSource) {
+            this.disconnect();
+        }
+        
+        try {
+            this.eventSource = new EventSource(API_CONFIG.sseEndpoint);
+            
+            this.eventSource.onopen = () => {
+                console.log('🔗 SSE 连接已建立');
+                this.connected = true;
+                updateConnectionStatus(true, '⚡ SSE实时推送中');
+            };
+            
+            this.eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    this.handleMessage(data);
+                } catch (e) {
+                    console.error('SSE 消息解析错误:', e);
+                }
+            };
+            
+            this.eventSource.onerror = (error) => {
+                console.log('SSE 连接错误，尝试重新连接...');
+                this.connected = false;
+                this.disconnect();
+                this.scheduleReconnect();
+            };
+            
+        } catch (e) {
+            console.error('SSE 连接失败:', e);
+            this.scheduleReconnect();
+        }
+    },
+    
+    handleMessage(data) {
+        this.lastUpdate = Date.now();
+        
+        if (data.type === 'connected') {
+            console.log('✅ SSE 已连接');
+            return;
+        }
+        
+        if (data.type === 'update' && data.data) {
+            updateCharactersFromStatus(data.data);
+            updateStats();
+        }
+    },
+    
+    disconnect() {
+        if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
+        }
+        this.connected = false;
+    },
+    
+    scheduleReconnect() {
+        if (this.reconnectTimer) return;
+        
+        this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
+            this.connect();
+        }, API_CONFIG.sseReconnectInterval);
+    },
+    
+    isActive() {
+        return this.connected && this.eventSource !== null;
+    }
+};
+
+// ==================== 数据统计系统 (Iteration 20) ====================
+const StatsSystem = {
+    history: [], // 存储历史统计数据
+    maxHistory: 100,
+    sessionStart: Date.now(),
+    
+    record() {
+        const working = characters.filter(c => c.status === 'working').length;
+        const idle = characters.length - working;
+        const totalProgress = Math.round(characters.reduce((sum, c) => sum + c.progress, 0) / characters.length);
+        
+        this.history.push({
+            timestamp: Date.now(),
+            working,
+            idle,
+            progress: totalProgress,
+            completed: dailyCompleted
+        });
+        
+        // 限制历史记录数量
+        if (this.history.length > this.maxHistory) {
+            this.history.shift();
+        }
+    },
+    
+    getEfficiencyTrend(characterId) {
+        const charHistory = this.history.filter(h => {
+            const char = characters.find(c => c.id === characterId);
+            return char && char.status === 'working';
+        });
+        
+        if (charHistory.length < 2) return 0;
+        
+        // 计算效率趋势 (正数表示效率提升)
+        const recent = charHistory.slice(-5);
+        const older = charHistory.slice(-10, -5);
+        
+        if (recent.length === 0 || older.length === 0) return 0;
+        
+        const recentAvg = recent.reduce((s, h) => s + h.progress, 0) / recent.length;
+        const olderAvg = older.reduce((s, h) => s + h.progress, 0) / older.length;
+        
+        return recentAvg - olderAvg;
+    },
+    
+    getDailyChartData() {
+        // 按分钟分组统计
+        const now = Date.now();
+        const oneHourAgo = now - 3600000;
+        
+        const hourlyData = [];
+        for (let i = 0; i < 12; i++) {
+            const time = oneHourAgo + (i * 300000); // 5分钟间隔
+            const matching = this.history.filter(h => 
+                h.timestamp >= time && h.timestamp < time + 300000
+            );
+            
+            const avgProgress = matching.length > 0 
+                ? matching.reduce((s, h) => s + h.progress, 0) / matching.length 
+                : 0;
+            
+            hourlyData.push({
+                time: new Date(time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+                progress: avgProgress,
+                working: matching.length > 0 ? matching[matching.length - 1].working : 0
+            });
+        }
+        
+        return hourlyData;
+    },
+    
+    getTopPerformer() {
+        const scores = characters.map(char => ({
+            id: char.id,
+            name: char.name,
+            score: (char.progress || 0) + (char.history?.length || 0) * 10
+        }));
+        
+        return scores.sort((a, b) => b.score - a.score)[0];
+    }
+};
+
+// ==================== 自定义皮肤系统 (Iteration 20) ====================
+const SkinSystem = {
+    currentSkin: 'default',
+    skins: {
+        default: { name: '🎨 默认', palette: 'pico8' },
+        retro: { name: '📺 复古', palette: 'cga' },
+        neon: { name: '💜 霓虹', palette: 'neon' },
+        pastel: { name: '🌸 粉彩', palette: 'pastel' }
+    },
+    
+    palettes: {
+        pico8: { primary: COLORS.blue, secondary: COLORS.green, accent: COLORS.yellow },
+        cga: { primary: '#55FFFF', secondary: '#FF55FF', accent: '#FFFF55' },
+        neon: { name: '💜 霓虹', primary: '#FF00FF', secondary: '#00FFFF', accent: '#FF0080' },
+        pastel: { name: '🌸 粉彩', primary: '#FFB6C1', secondary: '#98FB98', accent: '#DDA0DD' }
+    },
+    
+    cycle() {
+        const skinList = Object.keys(this.skins);
+        const idx = skinList.indexOf(this.currentSkin);
+        this.currentSkin = skinList[(idx + 1) % skinList.length];
+        AudioSystem.playClick();
+        console.log(`🎭 皮肤: ${this.skins[this.currentSkin].name}`);
+    },
+    
+    getCurrentPalette() {
+        return this.palettes[this.currentSkin] || this.palettes.pico8;
+    }
 };
 
 // 键盘快捷键
@@ -318,6 +513,10 @@ const KEYBOARD_SHORTCUTS = {
     '-': () => { gameSpeed = Math.max(0.5, gameSpeed - 0.5); },
     'r': () => toggleRealTimeData(),
     'R': () => toggleRealTimeData(),
+    's': () => toggleSSE(),
+    'S': () => toggleSSE(),
+    'k': () => SkinSystem.cycle(),
+    'K': () => SkinSystem.cycle(),
     ' ': () => refreshStatus()  // Space 刷新
 };
 
@@ -364,6 +563,31 @@ function toggleRealTimeData() {
     }
     AudioSystem.playClick();
     console.log(`📡 实时数据模式: ${useRealTimeData ? '开启' : '关闭'}`);
+}
+
+/**
+ * 切换 SSE 实时推送 (Iteration 20)
+ */
+let sseEnabled = false;
+
+function toggleSSE() {
+    sseEnabled = !sseEnabled;
+    const btn = document.getElementById('sse-toggle');
+    const connEl = document.getElementById('connection');
+    
+    if (sseEnabled) {
+        SSESystem.connect();
+        btn.textContent = '⚡';
+        btn.classList.add('active');
+    } else {
+        SSESystem.disconnect();
+        btn.textContent = '⚡';
+        btn.classList.remove('active');
+        updateConnectionStatus(true, '🟢 已连接');
+    }
+    
+    AudioSystem.playClick();
+    console.log(`⚡ SSE 推送: ${sseEnabled ? '开启' : '关闭'}`);
 }
 
 /**
@@ -632,6 +856,9 @@ function init() {
         } else {
             simulateOpenClawStatus();
         }
+        
+        // 记录统计数据 (Iteration 20)
+        StatsSystem.record();
     }, API_CONFIG.simulationInterval);
     
     // 初始统计更新
@@ -643,8 +870,11 @@ function init() {
     // 初始化时间系统 (Iteration 19)
     TimeOfDaySystem.update();
     
+    // 自动启动 SSE (Iteration 20) - 可选
+    // setTimeout(() => toggleSSE(), 3000);
+    
     console.log('🎮 Snoopy-Office 已启动');
-    console.log('⌨️ 快捷键: 1-8 选择角色, ESC 关闭, +/- 调整速度, R 切换实时数据, T 主题, M 时间, W 天气');
+    console.log('⌨️ 快捷键: 1-8 选择角色, ESC 关闭, +/- 调整速度, R 实时数据, S SSE推送, T 主题, M 时间, W 天气, K 皮肤');
 }
 
 // ==================== 任务通知系统 ====================
