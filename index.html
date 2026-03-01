@@ -170,6 +170,88 @@
             });
         }
     }
+    
+    // ==================== 像素音效系统 ====================
+    class PixelSoundSystem {
+        constructor() {
+            this.ctx = null;
+            this.enabled = false;
+            this.volume = 0.3;
+            this.sounds = {};
+            this.initialized = false;
+        }
+        
+        async init() {
+            if (this.initialized) return;
+            try {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.initialized = true;
+                console.log('音效系统已初始化');
+            } catch (e) {
+                console.log('音效系统不支持:', e);
+            }
+        }
+        
+        toggle() {
+            this.enabled = !this.enabled;
+            const btn = document.getElementById('sound-toggle');
+            if (btn) {
+                btn.textContent = this.enabled ? '🔊' : '🔇';
+                btn.classList.toggle('playing', this.enabled);
+            }
+            if (this.enabled) {
+                this.init();
+                this.playNote(440, 0.1, 'sine');
+            }
+            return this.enabled;
+        }
+        
+        playNote(freq, duration, type = 'square') {
+            if (!this.enabled || !this.ctx) return;
+            try {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.value = this.volume;
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.stop(this.ctx.currentTime + duration);
+.stop(this.ctx.current            } catch (e) {}
+        }
+        
+        playClick() { this.playNote(800, 0.05, 'square'); }
+        playSuccess() { 
+            this.playNote(523, 0.1, 'sine');
+            setTimeout(() => this.playNote(659, 0.1, 'sine'), 100);
+            setTimeout(() => this.playNote(784, 0.15, 'sine'), 200);
+        }
+        playError() {
+            this.playNote(200, 0.2, 'sawtooth');
+        }
+        playTyping() {
+            this.playNote(1200 + Math.random() * 400, 0.03, 'square');
+        }
+        playHover() {
+            this.playNote(600, 0.03, 'sine');
+        }
+    }
+    
+    const PixelSound = new PixelSoundSystem();
+    
+    // 音效事件绑定
+    document.addEventListener('DOMContentLoaded', () => {
+        // 按钮点击音效
+        document.querySelectorAll('.sound-btn, button').forEach(btn => {
+            btn.addEventListener('click', () => PixelSound.playClick());
+        });
+        // 悬停音效
+        document.querySelectorAll('.sound-btn').forEach(btn => {
+            btn.addEventListener('mouseenter', () => PixelSound.playHover());
+        });
+    });
     </script>
 </body>
 </html>

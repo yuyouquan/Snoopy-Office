@@ -221,14 +221,16 @@ footer {
 
 /* 像素字体效果 */
 .stats-panel {
-    position: absolute;
+    position: fixed;
     bottom: 10px;
     left: 10px;
     padding: 10px 15px;
-    background: rgba(45, 45, 53, 0.9);
+    background: rgba(45, 45, 53, 0.95);
     border: 2px solid var(--border);
     border-radius: 4px;
     font-size: 0.75rem;
+    z-index: 100;
+    max-width: 280px;
 }
 
 .stats-panel .stat-row {
@@ -369,4 +371,121 @@ footer {
     body {
         font-size: 14px;
     }
+}
+
+/* 像素角色动画 */
+@keyframes pixel-walk {
+    0%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-2px); }
+    50% { transform: translateY(0); }
+    75% { transform: translateY(-1px); }
+}
+
+@keyframes pixel-bounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes pixel-glow {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.2); }
+}
+
+.pixel-character {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    animation: pixel-walk 0.5s infinite;
+}
+
+.pixel-character.working {
+    animation: pixel-bounce 1s infinite;
+}
+
+.pixel-character.idle {
+    animation: pixel-glow 2s infinite;
+}
+
+/* 区域悬停效果 */
+.office-zone {
+    transition: all 0.2s ease;
+}
+
+.office-zone:hover {
+    filter: brightness(1.3);
+    cursor: pointer;
+}
+
+.office-zone.active {
+    box-shadow: 0 0 10px var(--accent);
+}
+
+/* 音效按钮动画 */
+.sound-btn:active {
+    transform: scale(0.95);
+}
+
+.sound-btn.playing {
+    animation: pixel-glow 1s infinite;
+    border-color: var(--accent);
+}
+
+/* 面板动画 */
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.panel {
+    animation: slide-up 0.3s ease;
+}
+
+/* 任务气泡提示 */
+.task-bubble {
+    position: absolute;
+    background: var(--bg-panel);
+    border: 2px solid var(--accent);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    animation: pixel-bounce 2s infinite;
+    z-index: 50;
+}
+
+/* 效率指示器 */
+.efficiency-bar {
+    height: 8px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.efficiency-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent));
+    transition: width 0.5s ease;
+}
+
+/* 座位状态指示 */
+.seat-indicator {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid #fff;
+}
+
+.seat-indicator.occupied {
+    background: var(--accent);
+}
+
+.seat-indicator.free {
+    background: var(--text-secondary);
 }
