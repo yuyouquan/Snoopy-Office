@@ -5980,12 +5980,676 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(searchInput);
 });
 
+// ==================== 装饰系统 (Iteration 29) ====================
+const DecorSystem = {
+    show: false,
+    decorations: [],
+    currentTheme: 'none', // none, christmas, halloween, spring, summer
+    themes: {
+        none: { name: '🎴 无装饰', items: [] },
+        christmas: { 
+            name: '🎄 圣诞主题', 
+            items: [
+                { type: 'tree', x: 700, y: 500 },
+                { type: 'snowman', x: 650, y: 520 },
+                { type: 'gift', x: 720, y: 550 },
+                { type: 'gift', x: 680, y: 560 },
+                { type: 'star', x: 400, y: 30 }
+            ]
+        },
+        halloween: { 
+            name: '🎃 万圣节', 
+            items: [
+                { type: 'pumpkin', x: 700, y: 520 },
+                { type: 'ghost', x: 50, y: 100 },
+                { type: 'web', x: 750, y: 50 },
+                { type: 'candle', x: 600, y: 550 }
+            ]
+        },
+        spring: { 
+            name: '🌸 春季主题', 
+            items: [
+                { type: 'flower', x: 100, y: 500 },
+                { type: 'flower', x: 200, y: 520 },
+                { type: 'flower', x: 300, y: 480 },
+                { type: 'butterfly', x: 400, y: 300 },
+                { type: 'butterfly', x: 500, y: 250 }
+            ]
+        },
+        summer: { 
+            name: '☀️ 夏季主题', 
+            items: [
+                { type: 'sun', x: 700, y: 50 },
+                { type: 'palm', x: 50, y: 450 },
+                { type: 'icecream', x: 600, y: 500 },
+                { type: 'beachball', x: 700, y: 550 }
+            ]
+        }
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`🎴 装饰系统: ${this.show ? '开启' : '关闭'}`);
+    },
+    
+    cycleTheme() {
+        const themeKeys = Object.keys(this.themes);
+        const idx = themeKeys.indexOf(this.currentTheme);
+        this.currentTheme = themeKeys[(idx + 1) % themeKeys.length];
+        this.decorations = this.themes[this.currentTheme].items;
+        AudioSystem.playSelect();
+        console.log(`🎄 主题: ${this.themes[this.currentTheme].name}`);
+    },
+    
+    drawDecorations(ctx) {
+        if (!this.show || this.currentTheme === 'none') return;
+        
+        this.decorations.forEach(dec => {
+            ctx.save();
+            switch(dec.type) {
+                case 'tree':
+                    // 圣诞树
+                    ctx.fillStyle = COLORS.darkGreen;
+                    ctx.beginPath();
+                    ctx.moveTo(dec.x, dec.y - 40);
+                    ctx.lineTo(dec.x + 20, dec.y);
+                    ctx.lineTo(dec.x - 20, dec.y);
+                    ctx.fill();
+                    ctx.fillStyle = COLORS.brown;
+                    ctx.fillRect(dec.x - 5, dec.y, 10, 15);
+                    // 装饰球
+                    if (Math.random() > 0.5) {
+                        ctx.fillStyle = COLORS.red;
+                        ctx.beginPath();
+                        ctx.arc(dec.x, dec.y - 20, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    break;
+                case 'snowman':
+                    ctx.fillStyle = COLORS.white;
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y - 20, 15, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y + 5, 20, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = COLORS.orange;
+                    ctx.beginPath(); ctx.moveTo(dec.x, dec.y - 20); ctx.lineTo(dec.x + 10, dec.y - 15); ctx.lineTo(dec.x, dec.y - 10); ctx.fill();
+                    break;
+                case 'gift':
+                    ctx.fillStyle = COLORS.red;
+                    ctx.fillRect(dec.x, dec.y, 20, 15);
+                    ctx.fillStyle = COLORS.yellow;
+                    ctx.fillRect(dec.x + 8, dec.y, 4, 15);
+                    ctx.fillRect(dec.x, dec.y + 5, 20, 4);
+                    break;
+                case 'star':
+                    ctx.fillStyle = COLORS.yellow;
+                    this.drawStar(ctx, dec.x, dec.y, 5, 15, 7);
+                    break;
+                case 'pumpkin':
+                    ctx.fillStyle = COLORS.orange;
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y, 20, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = COLORS.darkGreen;
+                    ctx.fillRect(dec.x - 3, dec.y - 25, 6, 10);
+                    // 眼睛
+                    ctx.fillStyle = COLORS.black;
+                    ctx.fillRect(dec.x - 8, dec.y - 5, 5, 8);
+                    ctx.fillRect(dec.x + 3, dec.y - 5, 5, 8);
+                    break;
+                case 'ghost':
+                    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                    ctx.beginPath();
+                    ctx.arc(dec.x, dec.y, 15, 0, Math.PI * 2);
+                    ctx.lineTo(dec.x - 15, dec.y + 20);
+                    ctx.lineTo(dec.x - 5, dec.y + 15);
+                    ctx.lineTo(dec.x, dec.y + 20);
+                    ctx.lineTo(dec.x + 5, dec.y + 15);
+                    ctx.lineTo(dec.x + 15, dec.y + 20);
+                    ctx.fill();
+                    break;
+                case 'web':
+                    ctx.strokeStyle = 'rgba(200,200,200,0.6)';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < 8; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(dec.x, dec.y);
+                        ctx.lineTo(dec.x + Math.cos(i * Math.PI / 4) * 50, dec.y + Math.sin(i * Math.PI / 4) * 50);
+                        ctx.stroke();
+                    }
+                    break;
+                case 'flower':
+                    ctx.fillStyle = COLORS.pink;
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i * Math.PI * 2) / 5;
+                        ctx.beginPath();
+                        ctx.arc(dec.x + Math.cos(angle) * 8, dec.y + Math.sin(angle) * 8, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.fillStyle = COLORS.yellow;
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y, 4, 0, Math.PI * 2); ctx.fill();
+                    break;
+                case 'butterfly':
+                    const flutter = Math.sin(Date.now() / 100) * 5;
+                    ctx.fillStyle = COLORS.pink;
+                    ctx.beginPath(); ctx.ellipse(dec.x - 8, dec.y, 8, 5 + flutter, -0.3, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(dec.x + 8, dec.y, 8, 5 - flutter, 0.3, 0, Math.PI * 2); ctx.fill();
+                    break;
+                case 'sun':
+                    ctx.fillStyle = COLORS.yellow;
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y, 25, 0, Math.PI * 2); ctx.fill();
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (i * Math.PI / 4);
+                        ctx.fillRect(dec.x + Math.cos(angle) * 30, dec.y + Math.sin(angle) * 30, 4, 15);
+                    }
+                    break;
+                case 'palm':
+                    ctx.fillStyle = COLORS.brown;
+                    ctx.fillRect(dec.x - 5, dec.y, 10, 60);
+                    ctx.fillStyle = COLORS.darkGreen;
+                    for (let i = 0; i < 5; i++) {
+                        const angle = -Math.PI / 2 + (i - 2) * 0.4;
+                        ctx.beginPath();
+                        ctx.ellipse(dec.x + Math.cos(angle) * 40, dec.y + Math.sin(angle) * 40, 30, 8, angle, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    break;
+                case 'icecream':
+                    ctx.fillStyle = COLORS.pink;
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y, 10, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = COLORS.peach;
+                    ctx.fillRect(dec.x - 8, dec.y, 16, 20);
+                    ctx.fillStyle = COLORS.brown;
+                    ctx.fillRect(dec.x - 3, dec.y + 20, 6, 10);
+                    break;
+                case 'beachball':
+                    const colors = [COLORS.red, COLORS.white, COLORS.blue];
+                    colors.forEach((c, i) => {
+                        ctx.fillStyle = c;
+                        ctx.beginPath();
+                        ctx.arc(dec.x, dec.y, 12, i * Math.PI / 1.5, (i + 1) * Math.PI / 1.5);
+                        ctx.lineTo(dec.x, dec.y);
+                        ctx.fill();
+                    });
+                    break;
+                case 'candle':
+                    ctx.fillStyle = COLORS.white;
+                    ctx.fillRect(dec.x - 4, dec.y, 8, 20);
+                    ctx.fillStyle = COLORS.yellow;
+                    ctx.beginPath(); ctx.arc(dec.x, dec.y - 5, 4, 0, Math.PI * 2); ctx.fill();
+                    break;
+            }
+            ctx.restore();
+        });
+    },
+    
+    drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+        let rot = Math.PI / 2 * 3;
+        let x = cx;
+        let y = cy;
+        const step = Math.PI / spikes;
+        
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - outerRadius);
+        for (let i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRadius;
+            y = cy + Math.sin(rot) * outerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+            
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+        }
+        ctx.lineTo(cx, cy - outerRadius);
+        ctx.closePath();
+        ctx.fill();
+    }
+};
+
+// ==================== 团队协作任务系统 (Iteration 29) ====================
+const TeamCollaboration = {
+    show: false,
+    tasks: [],
+    selectedTask: null,
+    dependencyGraph: [],
+    
+    init() {
+        // 模拟团队协作任务数据
+        this.tasks = [
+            { id: 1, name: '🚀 新功能开发', members: ['fe', 'be', 'qa'], status: 'progress', progress: 65, dependencies: [] },
+            { id: 2, name: '📝 文档更新', members: ['pm'], status: 'progress', progress: 80, dependencies: [1] },
+            { id: 3, name: '🔒 安全审计', members: ['security'], status: 'pending', progress: 0, dependencies: [2] },
+            { id: 4, name: '🎨 UI优化', members: ['fe', 'pm'], status: 'done', progress: 100, dependencies: [] },
+            { id: 5, name: '⚡ 性能优化', members: ['fe', 'be'], status: 'progress', progress: 40, dependencies: [4] }
+        ];
+        this.buildDependencyGraph();
+    },
+    
+    buildDependencyGraph() {
+        this.dependencyGraph = this.tasks.map(task => {
+            const deps = task.dependencies.map(depId => this.tasks.find(t => t.id === depId)).filter(Boolean);
+            return { task, dependencies: deps };
+        });
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`👥 团队协作: ${this.show ? '开启' : '关闭'}`);
+    },
+    
+    draw() {
+        if (!this.show) return;
+        
+        const panelW = 500, panelH = 450;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        // 背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        
+        // 边框
+        ctx.strokeStyle = COLORS.blue;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(panelX, panelY, panelW, panelH);
+        
+        // 标题
+        ctx.fillStyle = COLORS.white;
+        ctx.font = 'bold 16px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('👥 团队协作任务看板', panelX + panelW / 2, panelY + 25);
+        
+        // 关闭按钮
+        ctx.fillStyle = COLORS.red;
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText('×', panelX + panelW - 20, panelY + 25);
+        
+        // 任务列表
+        const listStartY = panelY + 50;
+        const taskH = 65;
+        
+        this.tasks.forEach((task, i) => {
+            const y = listStartY + i * taskH;
+            
+            // 任务背景
+            ctx.fillStyle = task.status === 'done' ? 'rgba(0, 200, 0, 0.2)' : 
+                           task.status === 'progress' ? 'rgba(0, 150, 255, 0.2)' : 
+                           'rgba(100, 100, 100, 0.2)';
+            ctx.fillRect(panelX + 20, y, panelW - 40, taskH - 10);
+            
+            // 状态边框
+            ctx.strokeStyle = task.status === 'done' ? COLORS.green : 
+                             task.status === 'progress' ? COLORS.blue : COLORS.gray;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(panelX + 20, y, panelW - 40, taskH - 10);
+            
+            // 任务名
+            ctx.fillStyle = COLORS.white;
+            ctx.font = '14px "Courier New"';
+            ctx.textAlign = 'left';
+            ctx.fillText(task.name, panelX + 30, y + 20);
+            
+            // 成员头像
+            ctx.font = '12px Arial';
+            const memberEmojis = { fe: '💻', be: '⚙️', qa: '🧪', pm: '📋', security: '🔒' };
+            task.members.forEach((m, mi) => {
+                ctx.fillText(memberEmojis[m] || '👤', panelX + 30 + mi * 25, y + 40);
+            });
+            
+            // 进度条
+            const progressX = panelX + 150;
+            ctx.fillStyle = '#333';
+            ctx.fillRect(progressX, y + 15, 150, 12);
+            ctx.fillStyle = task.status === 'done' ? COLORS.green : COLORS.blue;
+            ctx.fillRect(progressX, y + 15, task.progress * 1.5, 12);
+            
+            ctx.fillStyle = COLORS.white;
+            ctx.font = '10px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${task.progress}%`, progressX + 75, y + 25);
+            
+            // 依赖指示
+            if (task.dependencies.length > 0) {
+                ctx.fillStyle = COLORS.orange;
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(`📎依赖${task.dependencies.length}`, panelX + panelW - 30, y + 20);
+            }
+            
+            // 状态标签
+            const statusText = task.status === 'done' ? '✅ 完成' : 
+                              task.status === 'progress' ? '🔄 进行中' : '⏳ 待开始';
+            ctx.fillStyle = task.status === 'done' ? COLORS.green : 
+                           task.status === 'progress' ? COLORS.blue : COLORS.gray;
+            ctx.font = '10px "Courier New"';
+            ctx.textAlign = 'right';
+            ctx.fillText(statusText, panelX + panelW - 30, y + 40);
+        });
+        
+        // 图例
+        ctx.fillStyle = COLORS.lightGray;
+        ctx.font = '11px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText('💻 前端 | ⚙️ 后端 | 🧪 测试 | 📋 产品 | 🔒 安全', panelX + 30, panelY + panelH - 20);
+    },
+    
+    handleClick(x, y) {
+        if (!this.show) return false;
+        
+        const panelW = 500, panelH = 450;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        // 关闭
+        if (x > panelX + panelW - 35 && x < panelX + panelW - 10 && 
+            y > panelY + 5 && y < panelY + 25) {
+            this.show = false;
+            AudioSystem.playClick();
+            return true;
+        }
+        
+        return true;
+    }
+};
+
+// ==================== 云端数据同步系统 (Iteration 29) ====================
+const CloudSyncSystem = {
+    show: false,
+    lastSync: null,
+    syncStatus: 'idle', // idle, syncing, success, error
+    cloudData: {},
+    autoSync: true,
+    syncInterval: 60000, // 1分钟
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`☁️ 云端同步: ${this.show ? '开启' : '关闭'}`);
+    },
+    
+    async syncToCloud() {
+        if (this.syncStatus === 'syncing') return;
+        
+        this.syncStatus = 'syncing';
+        console.log('☁️ 正在同步到云端...');
+        
+        try {
+            // 收集当前状态
+            const state = {
+                characters: characters,
+                stats: StatsSystem.history.slice(-50),
+                achievements: AchievementSystem.achievements,
+                dailyChallenges: DailyChallengeSystem.challenges,
+                timestamp: Date.now()
+            };
+            
+            // 存储到 localStorage 作为本地备份
+            localStorage.setItem('snoopyoffice_backup', JSON.stringify(state));
+            
+            // 模拟云端同步成功
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            this.cloudData = state;
+            this.lastSync = new Date();
+            this.syncStatus = 'success';
+            console.log('☁️ 云端同步完成!');
+            
+            AudioSystem.playTaskComplete();
+        } catch (error) {
+            console.error('☁️ 同步失败:', error);
+            this.syncStatus = 'error';
+            AudioSystem.playError();
+        }
+    },
+    
+    async restoreFromCloud() {
+        console.log('☁️ 正在从云端恢复...');
+        
+        try {
+            // 先尝试从 localStorage 恢复
+            const backup = localStorage.getItem('snoopyoffice_backup');
+            if (backup) {
+                const state = JSON.parse(backup);
+                this.applyState(state);
+                this.syncStatus = 'success';
+                console.log('☁️ 数据恢复成功!');
+                AudioSystem.playTaskComplete();
+                return true;
+            }
+            
+            console.log('☁️ 没有找到备份数据');
+            return false;
+        } catch (error) {
+            console.error('☁️ 恢复失败:', error);
+            this.syncStatus = 'error';
+            AudioSystem.playError();
+            return false;
+        }
+    },
+    
+    applyState(state) {
+        if (state.characters) {
+            characters = state.characters;
+            // 更新显示
+            updateStats();
+        }
+        if (state.achievements) {
+            AchievementSystem.achievements = state.achievements;
+        }
+        if (state.dailyChallenges) {
+            DailyChallengeSystem.challenges = state.dailyChallenges;
+        }
+    },
+    
+    exportToFile() {
+        const state = {
+            characters: characters,
+            stats: StatsSystem.history,
+            achievements: AchievementSystem.achievements,
+            dailyChallenges: DailyChallengeSystem.challenges,
+            exportedAt: new Date().toISOString()
+        };
+        
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `snoopyoffice_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        console.log('📦 数据已导出到文件');
+        AudioSystem.playClick();
+    },
+    
+    importFromFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const state = JSON.parse(e.target.result);
+                this.applyState(state);
+                console.log('📥 数据导入成功!');
+                AudioSystem.playTaskComplete();
+            } catch (error) {
+                console.error('📥 导入失败:', error);
+                AudioSystem.playError();
+            }
+        };
+        reader.readAsText(file);
+    },
+    
+    draw() {
+        if (!this.show) return;
+        
+        const panelW = 400, panelH = 300;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        // 背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        
+        ctx.strokeStyle = COLORS.green;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(panelX, panelY, panelW, panelH);
+        
+        // 标题
+        ctx.fillStyle = COLORS.white;
+        ctx.font = 'bold 16px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('☁️ 云端数据同步', panelX + panelW / 2, panelY + 30);
+        
+        // 状态
+        const statusIcon = this.syncStatus === 'syncing' ? '🔄' :
+                          this.syncStatus === 'success' ? '✅' :
+                          this.syncStatus === 'error' ? '❌' : '⏳';
+        const statusText = this.syncStatus === 'syncing' ? '同步中...' :
+                          this.syncStatus === 'success' ? '同步成功' :
+                          this.syncStatus === 'error' ? '同步失败' : '等待同步';
+        
+        ctx.fillStyle = COLORS.lightGray;
+        ctx.font = '14px "Courier New"';
+        ctx.fillText(`${statusIcon} ${statusText}`, panelX + panelW / 2, panelY + 70);
+        
+        // 最后同步时间
+        if (this.lastSync) {
+            ctx.font = '12px "Courier New"';
+            ctx.fillText(`上次同步: ${this.lastSync.toLocaleString()}`, panelX + panelW / 2, panelY + 95);
+        }
+        
+        // 按钮区域
+        const btnY = panelY + 130;
+        const btnW = 150, btnH = 35;
+        
+        // 同步按钮
+        ctx.fillStyle = COLORS.blue;
+        ctx.fillRect(panelX + 25, btnY, btnW, btnH);
+        ctx.fillStyle = COLORS.white;
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('☁️ 立即同步', panelX + 25 + btnW / 2, btnY + 22);
+        
+        // 恢复按钮
+        ctx.fillStyle = COLORS.orange;
+        ctx.fillRect(panelX + panelW - 175, btnY, btnW, btnH);
+        ctx.fillStyle = COLORS.white;
+        ctx.fillText('📥 恢复数据', panelX + panelW - 175 + btnW / 2, btnY + 22);
+        
+        // 导出按钮
+        ctx.fillStyle = COLORS.green;
+        ctx.fillRect(panelX + 25, btnY + 50, btnW, btnH);
+        ctx.fillStyle = COLORS.white;
+        ctx.fillText('📦 导出文件', panelX + 25 + btnW / 2, btnY + 72);
+        
+        // 导入按钮
+        ctx.fillStyle = COLORS.purple;
+        ctx.fillRect(panelX + panelW - 175, btnY + 50, btnW, btnH);
+        ctx.fillStyle = COLORS.white;
+        ctx.fillText('📥 导入文件', panelX + panelW - 175 + btnW / 2, btnY + 72);
+        
+        // 说明
+        ctx.fillStyle = COLORS.lightGray;
+        ctx.font = '10px "Courier New"';
+        ctx.fillText('💡 数据会自动保存到本地存储', panelX + panelW / 2, panelY + panelH - 25);
+    },
+    
+    handleClick(x, y) {
+        if (!this.show) return false;
+        
+        const panelW = 400, panelH = 300;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        const btnY = panelY + 130;
+        const btnW = 150, btnH = 35;
+        
+        // 同步按钮
+        if (x > panelX + 25 && x < panelX + 25 + btnW && y > btnY && y < btnY + btnH) {
+            this.syncToCloud();
+            AudioSystem.playClick();
+            return true;
+        }
+        
+        // 恢复按钮
+        if (x > panelX + panelW - 175 && x < panelX + panelW - 25 && y > btnY && y < btnY + btnH) {
+            this.restoreFromCloud();
+            return true;
+        }
+        
+        // 导出按钮
+        if (x > panelX + 25 && x < panelX + 25 + btnW && y > btnY + 50 && y < btnY + 50 + btnH) {
+            this.exportToFile();
+            return true;
+        }
+        
+        // 导入按钮 - 触发文件选择
+        if (x > panelX + panelW - 175 && x < panelX + panelW - 25 && y > btnY + 50 && y < btnY + 50 + btnH) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                if (e.target.files[0]) {
+                    this.importFromFile(e.target.files[0]);
+                }
+            };
+            input.click();
+            return true;
+        }
+        
+        // 点击背景关闭
+        if (x > panelX && x < panelX + panelW && y > panelY && y < panelY + panelH) {
+            return true;
+        }
+        
+        this.show = false;
+        return true;
+    }
+};
+
+// ==================== 迭代29快捷键 ====================
+const KEYBOARD_SHORTCUTS_29 = {
+    'd': () => DecorSystem.toggle(),
+    'D': () => DecorSystem.toggle(),
+    'y': () => DecorSystem.cycleTheme(),
+    'Y': () => DecorSystem.cycleTheme(),
+    'c': () => TeamCollaboration.toggle(),
+    'C': () => TeamCollaboration.toggle(),
+    'z': () => CloudSyncSystem.toggle(),
+    'Z': () => CloudSyncSystem.toggle()
+};
+
+// 合并快捷键
+Object.assign(KEYBOARD_SHORTCUTS, KEYBOARD_SHORTCUTS_29);
+
+// 修改渲染函数包含新系统
+const originalRender29 = render;
+render = function() {
+    originalRender29();
+    DecorSystem.drawDecorations(ctx);
+    if (TeamCollaboration.show) TeamCollaboration.draw();
+    if (CloudSyncSystem.show) CloudSyncSystem.draw();
+};
+
+// 修改点击处理包含新系统
+const originalHandleClick29 = handleClick;
+handleClick = function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    
+    if (TeamCollaboration.show && TeamCollaboration.handleClick(x, y)) return;
+    if (CloudSyncSystem.show && CloudSyncSystem.handleClick(x, y)) return;
+    
+    originalHandleClick29(e);
+};
+
 // ==================== 初始化 ====================
-const originalInit28 = init;
+const originalInit29 = init;
 init = function() {
-    originalInit28();
-    CharInteraction.active = false;
-    EfficiencyAnalytics.generateReport();
-    console.log('🎮 迭代28功能已加载: 角色互动 | 效率分析 | 高级搜索');
-    console.log('⌨️ 新快捷键: I 角色互动 | E 效率分析 | A 高级搜索');
+    originalInit29();
+    TeamCollaboration.init();
+    DecorSystem.decorations = DecorSystem.themes.none.items;
+    console.log('🎮 迭代29功能已加载: 装饰系统 | 团队协作 | 云端同步');
+    console.log('⌨️ 新快捷键: D 装饰 | Y 主题 | C 协作 | Z 云端');
 };
