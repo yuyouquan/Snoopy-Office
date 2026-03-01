@@ -7234,3 +7234,631 @@ init = function() {
     console.log('🎮 迭代31功能已加载: 情感系统 | AI建议 | AR支持');
     console.log('⌨️ 新快捷键: E 情感 | A AI建议 | X AR模式');
 };
+
+// ==================== AI聊天助手系统 (Iteration 32) ====================
+const AIChatAssistant = {
+    show: false,
+    messages: [],
+    inputText: '',
+    processing: false,
+    
+    // 模拟AI响应
+    generateResponse(input) {
+        const lowerInput = input.toLowerCase();
+        let response = '';
+        let type = 'info';
+        
+        // 任务相关
+        if (lowerInput.includes('任务') || lowerInput.includes('分配')) {
+            const idleChars = characters.filter(c => c.status === 'idle');
+            if (idleChars.length > 0) {
+                const randomChar = idleChars[Math.floor(Math.random() * idleChars.length)];
+                response = `好的！我建议给 ${randomChar.name} 分配新任务：${this.getRandomTask()}`;
+                type = 'task';
+            } else {
+                response = '目前所有角色都在工作中，建议等待或调整任务优先级。';
+                type = 'info';
+            }
+        }
+        // 状态查询
+        else if (lowerInput.includes('状态') || lowerInput.includes('怎么样')) {
+            const working = characters.filter(c => c.status === 'working').length;
+            const idle = characters.length - working;
+            response = `当前团队状态：${working}人工作中，${idle}人待命。整体效率 ${Math.round(overallProgress)}%`;
+            type = 'status';
+        }
+        // 效率相关
+        else if (lowerInput.includes('效率') || lowerInput.includes('排名')) {
+            const sorted = [...characters].sort((a, b) => (b.progress || 0) - (a.progress || 0));
+            response = '当前效率排名：\n' + sorted.slice(0, 3).map((c, i) => `${i+1}. ${c.name}: ${c.progress || 0}%`).join('\n');
+            type = 'ranking';
+        }
+        // 帮助
+        else if (lowerInput.includes('帮助') || lowerInput.includes('能做什么')) {
+            response = '我可以帮你：\n📋 分配任务\n📊 查看状态\n🏆 查询排名\n💡 提供建议\n🎯 调整优先级';
+            type = 'help';
+        }
+        // 问候
+        else if (lowerInput.includes('你好') || lowerInput.includes('hi') || lowerInput.includes('hello')) {
+            response = '你好！我是Snoopy-Office AI助手，有什么可以帮你的？';
+            type = 'greeting';
+        }
+        // 感谢
+        else if (lowerInput.includes('谢谢') || lowerInput.includes('感谢')) {
+            response = '不客气！很高兴能帮到你 😊';
+            type = 'thanks';
+        }
+        // 默认
+        else {
+            const responses = [
+                '明白了，我会帮你处理这个需求。',
+                '收到！让我分析一下当前情况...',
+                '好的，我理解你的需求了。',
+                '明白了，正在为你规划最佳方案...',
+                '收到！我会协调团队完成这个任务。'
+            ];
+            response = responses[Math.floor(Math.random() * responses.length)];
+            type = 'default';
+        }
+        
+        return { text: response, type };
+    },
+    
+    // 获取随机任务
+    getRandomTask() {
+        const tasks = [
+            '优化代码性能',
+            '撰写技术文档',
+            '修复测试bug',
+            '设计新功能原型',
+            '进行代码审查',
+            '更新依赖版本',
+            '编写单元测试',
+            '优化数据库查询'
+        ];
+        return tasks[Math.floor(Math.random() * tasks.length)];
+    },
+    
+    // 发送消息
+    sendMessage(text) {
+        if (!text.trim() || this.processing) return;
+        
+        this.messages.push({ text, role: 'user', time: new Date() });
+        
+        this.processing = true;
+        this.inputText = '';
+        
+        // 模拟AI思考延迟
+        setTimeout(() => {
+            const response = this.generateResponse(text);
+            this.messages.push({ 
+                text: response.text, 
+                role: 'assistant', 
+                time: new Date(),
+                type: response.type
+            });
+            this.processing = false;
+            
+            // 滚动到底部
+            setTimeout(() => {
+                const chatBody = document.getElementById('chat-body');
+                if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
+            }, 100);
+        }, 500 + Math.random() * 1000);
+    },
+    
+    // 绘制聊天面板
+    draw() {
+        if (!this.show) return;
+        
+        // 创建DOM元素（如果不存在）
+        let chatPanel = document.getElementById('ai-chat-panel');
+        if (!chatPanel) {
+            chatPanel = document.createElement('div');
+            chatPanel.id = 'ai-chat-panel';
+            chatPanel.style.cssText = `
+                position: fixed; bottom: 20px; left: 20px; width: 360px; height: 480px;
+                background: ${ThemeSystem.themes[ThemeSystem.current].panel};
+                border: 3px solid ${COLORS.purple}; border-radius: 12px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 10000;
+                display: flex; flex-direction: column; font-family: 'Press Start 2P', sans-serif;
+            `;
+            
+            chatPanel.innerHTML = `
+                <div style="padding: 12px; background: ${COLORS.purple}; color: white; 
+                    border-radius: 9px 9px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 10px;">🤖 AI 聊天助手</span>
+                    <button onclick="AIChatAssistant.toggle()" style="background: none; border: none; 
+                        color: white; cursor: pointer; font-size: 16px;">×</button>
+                </div>
+                <div id="chat-body" style="flex: 1; overflow-y: auto; padding: 10px; display: flex; 
+                    flex-direction: column; gap: 8px;">
+                    <div style="align-self: flex-start; background: ${COLORS.lightGray}22; 
+                        padding: 8px 12px; border-radius: 8px; max-width: 80%; font-size: 9px;
+                        color: ${ThemeSystem.themes[ThemeSystem.current].text};">
+                        👋 你好！我是AI助手，可以帮你分配任务、查询状态、解答问题。
+                    </div>
+                </div>
+                <div style="padding: 10px; border-top: 1px solid ${COLORS.lightGray};
+                    display: flex; gap: 8px;">
+                    <input type="text" id="chat-input" placeholder="输入消息..." 
+                        style="flex: 1; padding: 8px; border: 2px solid ${COLORS.lightGray};
+                        border-radius: 6px; background: ${ThemeSystem.themes[ThemeSystem.current].bg};
+                        color: ${ThemeSystem.themes[ThemeSystem.current].text}; font-size: 10px;"
+                        onkeypress="if(event.key==='Enter'){AIChatAssistant.sendMessage(this.value);}">
+                    <button onclick="AIChatAssistant.sendMessage(document.getElementById('chat-input').value)"
+                        style="padding: 8px 12px; background: ${COLORS.purple}; color: white;
+                        border: none; border-radius: 6px; cursor: pointer; font-size: 10px;">发送</button>
+                </div>
+            `;
+            
+            document.body.appendChild(chatPanel);
+        }
+    },
+    
+    // 更新消息显示
+    updateMessages() {
+        const chatBody = document.getElementById('chat-body');
+        if (!chatBody) return;
+        
+        chatBody.innerHTML = this.messages.map(m => {
+            const isUser = m.role === 'user';
+            const alignment = isUser ? 'flex-end' : 'flex-start';
+            const bg = isUser ? COLORS.purple + '88' : ThemeSystem.themes[ThemeSystem.current].bg + '44';
+            const color = isUser ? 'white' : ThemeSystem.themes[ThemeSystem.current].text;
+            const prefix = isUser ? '👤' : '🤖';
+            
+            return `<div style="align-self: ${alignment}; background: ${bg}; padding: 8px 12px; 
+                border-radius: 8px; max-width: 80%; font-size: 9px; color: ${color}; white-space: pre-wrap;">
+                ${prefix} ${m.text}</div>`;
+        }).join('');
+        
+        chatBody.scrollTop = chatBody.scrollHeight;
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        if (this.show) {
+            this.draw();
+            AudioSystem.playClick();
+        } else {
+            const chatPanel = document.getElementById('ai-chat-panel');
+            if (chatPanel) chatPanel.remove();
+        }
+    }
+};
+
+// ==================== 社交功能系统 (Iteration 32) ====================
+const SocialSystem = {
+    show: false,
+    visitors: [],
+    maxVisitors: 3,
+    
+    // 访客类型
+    visitorTypes: [
+        { name: '面试者', icon: '👔', color: COLORS.blue },
+        { name: '投资人', icon: '💼', color: COLORS.gold },
+        { name: '合作伙伴', icon: '🤝', color: COLORS.green },
+        { name: '媒体', icon: '📰', color: COLORS.orange },
+        { name: '粉丝', icon: '⭐', color: COLORS.pink }
+    ],
+    
+    // 生成随机访客
+    generateVisitor() {
+        const type = this.visitorTypes[Math.floor(Math.random() * this.visitorTypes.length)];
+        const firstNames = ['张', '李', '王', '刘', '陈', '杨', '赵', '黄', '周', '吴'];
+        const lastNames = ['明', '华', '伟', '芳', '娜', '丽', '强', '磊', '军', '洋'];
+        
+        return {
+            id: 'visitor_' + Date.now(),
+            name: firstNames[Math.floor(Math.random() * firstNames.length)] + 
+                  lastNames[Math.floor(Math.random() * lastNames.length)],
+            type: type,
+            visitTime: new Date(),
+            status: 'arriving', // arriving, visiting, leaving
+            position: { x: 400, y: 550 },
+            targetPosition: { x: 300 + Math.random() * 200, y: 200 + Math.random() * 200 }
+        };
+    },
+    
+    // 随机生成访客
+    spawnVisitor() {
+        if (this.visitors.length >= this.maxVisitors) return;
+        if (Math.random() > 0.3) return;
+        
+        const visitor = this.generateVisitor();
+        this.visitors.push(visitor);
+        console.log(`👋 新访客: ${visitor.name} (${visitor.type.name})`);
+    },
+    
+    // 更新访客
+    updateVisitors() {
+        this.visitors.forEach(visitor => {
+            // 移动到目标位置
+            const dx = visitor.targetPosition.x - visitor.position.x;
+            const dy = visitor.targetPosition.y - visitor.position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 5) {
+                visitor.position.x += dx * 0.02;
+                visitor.position.y += dy * 0.02;
+            } else {
+                if (visitor.status === 'arriving') {
+                    visitor.status = 'visiting';
+                    // 随机设置下一个目标
+                    setTimeout(() => {
+                        visitor.targetPosition = { 
+                            x: 100 + Math.random() * 600, 
+                            y: 100 + Math.random() * 400 
+                        };
+                    }, 3000 + Math.random() * 5000);
+                }
+            }
+            
+            // 随机离开
+            if (visitor.status === 'visiting' && Math.random() < 0.001) {
+                visitor.status = 'leaving';
+                visitor.targetPosition = { x: 400, y: 600 };
+            }
+        });
+        
+        // 移除已离开的访客
+        this.visitors = this.visitors.filter(v => v.status !== 'leaving' || v.position.y < 580);
+        
+        // 生成新访客
+        this.spawnVisitor();
+    },
+    
+    // 绘制访客
+    drawVisitors() {
+        if (!this.show) return;
+        
+        this.visitors.forEach(visitor => {
+            // 访客圆圈
+            ctx.fillStyle = visitor.type.color + '88';
+            ctx.beginPath();
+            ctx.arc(visitor.position.x, visitor.position.y, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 访客图标
+            ctx.font = '20px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(visitor.type.icon, visitor.position.x, visitor.position.y + 6);
+            
+            // 访客名称
+            ctx.font = '8px "Press Start 2P"';
+            ctx.fillStyle = ThemeSystem.themes[ThemeSystem.current].text;
+            ctx.fillText(visitor.name, visitor.position.x, visitor.position.y - 25);
+        });
+    },
+    
+    // 成就分享
+    shareAchievement(achievement) {
+        const shareText = `🎮 我在 Snoopy-Office 获得了成就：${achievement.name}！\n🏢 像素办公室管理经验值+${achievement.xp}\n\n🌐 ${window.location.href}`;
+        
+        if (navigator.share) {
+            navigator.share({
+                title: 'Snoopy-Office 成就',
+                text: shareText,
+                url: window.location.href
+            });
+        } else {
+            // 复制到剪贴板
+            navigator.clipboard.writeText(shareText).then(() => {
+                alert('成就分享内容已复制到剪贴板！');
+            });
+        }
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`👥 访客系统: ${this.show ? '开启' : '关闭'}`);
+    }
+};
+
+// ==================== 数据可视化增强系统 (Iteration 32) ====================
+const DataVisualization = {
+    show: false,
+    mode: 'weekly', // weekly, monthly, comparison
+    
+    // 生成周报数据
+    generateWeeklyReport() {
+        const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+        const data = days.map(day => ({
+            day,
+            tasks: Math.floor(Math.random() * 20) + 5,
+            efficiency: Math.floor(Math.random() * 30) + 70,
+            collaboration: Math.floor(Math.random() * 40) + 60
+        }));
+        
+        const avgEfficiency = Math.round(data.reduce((sum, d) => sum + d.efficiency, 0) / 7);
+        const totalTasks = data.reduce((sum, d) => sum + d.tasks, 0);
+        
+        return { data, avgEfficiency, totalTasks };
+    },
+    
+    // 生成月报数据
+    generateMonthlyReport() {
+        const weeks = ['第1周', '第2周', '第3周', '第4周'];
+        const data = weeks.map(week => ({
+            week,
+            tasks: Math.floor(Math.random() * 80) + 20,
+            completed: Math.floor(Math.random() * 60) + 20,
+            efficiency: Math.floor(Math.random() * 20) + 80
+        }));
+        
+        const totalTasks = data.reduce((sum, d) => sum + d.tasks, 0);
+        const totalCompleted = data.reduce((sum, d) => sum + d.completed, 0);
+        
+        return { data, completionRate: Math.round((totalCompleted / totalTasks) * 100) };
+    },
+    
+    // 生成效率对比数据
+    generateComparisonData() {
+        const thisWeek = characters.map(c => ({
+            name: c.name,
+            efficiency: Math.floor(Math.random() * 40) + 60
+        }));
+        
+        const lastWeek = characters.map(c => ({
+            name: c.name,
+            efficiency: Math.floor(Math.random() * 40) + 55
+        }));
+        
+        return { thisWeek, lastWeek };
+    },
+    
+    // 绘制报表面板
+    draw() {
+        if (!this.show) return;
+        
+        const panelW = 500;
+        const panelH = 400;
+        const panelX = (canvas.width - panelW) / 2;
+        const panelY = (canvas.height - panelH) / 2;
+        
+        // 面板背景
+        ctx.fillStyle = ThemeSystem.themes[ThemeSystem.current].panel;
+        ctx.strokeStyle = COLORS.cyan;
+        ctx.lineWidth = 3;
+        roundRect(ctx, panelX, panelY, panelW, panelH, 12);
+        ctx.fill();
+        ctx.stroke();
+        
+        // 标题
+        const titles = { weekly: '📊 周报', monthly: '📈 月报', comparison: '📉 效率对比' };
+        ctx.fillStyle = COLORS.cyan;
+        ctx.font = 'bold 14px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.fillText(titles[this.mode], canvas.width / 2, panelY + 30);
+        
+        // 切换按钮
+        const modes = ['weekly', 'monthly', 'comparison'];
+        const btnY = panelY + 50;
+        modes.forEach((mode, i) => {
+            const btnX = panelX + 30 + i * 150;
+            const isActive = this.mode === mode;
+            
+            ctx.fillStyle = isActive ? COLORS.cyan : ThemeSystem.themes[ThemeSystem.current].bg;
+            ctx.strokeStyle = COLORS.cyan;
+            roundRect(ctx, btnX, btnY, 130, 25, 5);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = isActive ? ThemeSystem.themes[ThemeSystem.current].bg : COLORS.cyan;
+            ctx.font = '8px "Press Start 2P"';
+            ctx.fillText(['周报', '月报', '对比'][i], btnX + 65, btnY + 17);
+        });
+        
+        // 绘制内容
+        const contentY = panelY + 90;
+        if (this.mode === 'weekly') {
+            this.drawWeeklyContent(panelX + 20, contentY, panelW - 40);
+        } else if (this.mode === 'monthly') {
+            this.drawMonthlyContent(panelX + 20, contentY, panelW - 40);
+        } else {
+            this.drawComparisonContent(panelX + 20, contentY, panelW - 40);
+        }
+        
+        // 关闭按钮
+        ctx.fillStyle = COLORS.red;
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('×', panelX + panelW - 20, panelY + 25);
+    },
+    
+    // 绘制周报内容
+    drawWeeklyContent(x, y, w) {
+        const report = this.generateWeeklyReport();
+        
+        // 统计摘要
+        ctx.fillStyle = ThemeSystem.themes[ThemeSystem.current].text;
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`📋 总任务数: ${report.totalTasks}`, x, y);
+        ctx.fillText(`📈 平均效率: ${report.avgEfficiency}%`, x + 200, y);
+        
+        // 柱状图
+        const chartY = y + 40;
+        const chartH = 180;
+        const barW = (w - 60) / 7;
+        
+        report.data.forEach((d, i) => {
+            const barH = (d.efficiency / 100) * chartH;
+            const barX = x + 10 + i * barW;
+            
+            // 柱体
+            ctx.fillStyle = COLORS.cyan;
+            roundRect(ctx, barX, chartY + chartH - barH, barW - 8, barH, 3);
+            ctx.fill();
+            
+            // 标签
+            ctx.fillStyle = ThemeSystem.themes[ThemeSystem.current].text;
+            ctx.font = '8px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(d.day, barX + barW / 4, chartY + chartH + 15);
+            
+            // 数值
+            ctx.fillText(d.efficiency + '%', barX + barW / 4, chartY + chartH - barH - 5);
+        });
+    },
+    
+    // 绘制月报内容
+    drawMonthlyContent(x, y, w) {
+        const report = this.generateMonthlyReport();
+        
+        // 完成率
+        ctx.fillStyle = ThemeSystem.themes[ThemeSystem.current].text;
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`✅ 任务完成率: ${report.completionRate}%`, x, y);
+        
+        // 饼图
+        const pieX = x + w / 2;
+        const pieY = y + 100;
+        const radius = 70;
+        
+        // 已完成
+        ctx.fillStyle = COLORS.green;
+        ctx.beginPath();
+        ctx.moveTo(pieX, pieY);
+        ctx.arc(pieX, pieY, radius, 0, Math.PI * 2 * (report.completionRate / 100));
+        ctx.closePath();
+        ctx.fill();
+        
+        // 未完成
+        ctx.fillStyle = COLORS.red + '88';
+        ctx.beginPath();
+        ctx.moveTo(pieX, pieY);
+        ctx.arc(pieX, pieY, radius, Math.PI * 2 * (report.completionRate / 100), Math.PI * 2);
+        ctx.closePath();
+        ctx.fill();
+        
+        // 图例
+        ctx.font = '8px sans-serif';
+        ctx.fillStyle = COLORS.green;
+        ctx.fillText('✅ 已完成', x, pieY + radius + 30);
+        ctx.fillStyle = COLORS.red;
+        ctx.fillText('❌ 未完成', x + 80, pieY + radius + 30);
+    },
+    
+    // 绘制对比内容
+    drawComparisonContent(x, y, w) {
+        const data = this.generateComparisonData();
+        
+        // 对比图
+        const chartH = 200;
+        const barW = (w - 40) / characters.length / 2;
+        
+        data.thisWeek.forEach((d, i) => {
+            const barX = x + 10 + i * barW * 2;
+            
+            // 本周
+            const thisH = (d.efficiency / 100) * chartH;
+            ctx.fillStyle = COLORS.cyan;
+            roundRect(ctx, barX, y + chartH - thisH, barW - 5, thisH, 3);
+            ctx.fill();
+            
+            // 上周
+            const lastH = (data.lastWeek[i].efficiency / 100) * chartH;
+            ctx.fillStyle = COLORS.gray;
+            roundRect(ctx, barX + barW, y + chartH - lastH, barW - 5, lastH, 3);
+            ctx.fill();
+            
+            // 标签
+            ctx.fillStyle = ThemeSystem.themes[ThemeSystem.current].text;
+            ctx.font = '7px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(d.name.slice(0, 2), barX + barW, y + chartH + 12);
+        });
+        
+        // 图例
+        ctx.font = '8px sans-serif';
+        ctx.fillStyle = COLORS.cyan;
+        ctx.fillText('■ 本周', x, y + chartH + 30);
+        ctx.fillStyle = COLORS.gray;
+        ctx.fillText('■ 上周', x + 60, y + chartH + 30);
+    },
+    
+    // 切换模式
+    cycleMode() {
+        const modes = ['weekly', 'monthly', 'comparison'];
+        const idx = modes.indexOf(this.mode);
+        this.mode = modes[(idx + 1) % modes.length];
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`📊 数据报表: ${this.show ? '开启' : '关闭'}`);
+    }
+};
+
+// ==================== 快捷键 (Iteration 32) ====================
+const KEYBOARD_SHORTCUTS_32 = {
+    'v': () => AIChatAssistant.toggle(),
+    'V': () => AIChatAssistant.toggle(),
+    'i': () => SocialSystem.toggle(),
+    'I': () => SocialSystem.toggle(),
+    'p': () => DataVisualization.toggle(),
+    'P': () => DataVisualization.toggle()
+};
+
+// 合并快捷键
+Object.assign(KEYBOARD_SHORTCUTS, KEYBOARD_SHORTCUTS_32);
+
+// 修改渲染函数包含新系统
+const originalRender32 = render;
+render = function() {
+    originalRender32();
+    if (SocialSystem.show) {
+        SocialSystem.updateVisitors();
+        SocialSystem.drawVisitors();
+    }
+    if (DataVisualization.show) {
+        DataVisualization.draw();
+    }
+    if (AIChatAssistant.show) {
+        AIChatAssistant.draw();
+    }
+};
+
+// 添加按钮到UI
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        const statusBar = document.querySelector('.status-bar');
+        if (statusBar) {
+            const chatBtn = document.createElement('button');
+            chatBtn.className = 'sound-btn';
+            chatBtn.id = 'chat-toggle';
+            chatBtn.textContent = '🤖';
+            chatBtn.title = 'AI聊天 (V)';
+            chatBtn.onclick = () => AIChatAssistant.toggle();
+            statusBar.appendChild(chatBtn);
+            
+            const socialBtn = document.createElement('button');
+            socialBtn.className = 'sound-btn';
+            socialBtn.id = 'social-toggle';
+            socialBtn.textContent = '👥';
+            socialBtn.title = '访客系统 (I)';
+            socialBtn.onclick = () => SocialSystem.toggle();
+            statusBar.appendChild(socialBtn);
+            
+            const reportBtn = document.createElement('button');
+            reportBtn.className = 'sound-btn';
+            reportBtn.id = 'report-toggle';
+            reportBtn.textContent = '📊';
+            reportBtn.title = '数据报表 (P)';
+            reportBtn.onclick = () => DataVisualization.toggle();
+            statusBar.appendChild(reportBtn);
+        }
+    }, 1000);
+});
+
+// ==================== 初始化 (Iteration 32) ====================
+const originalInit32 = init;
+init = function() {
+    originalInit32();
+    console.log('🎮 迭代32功能已加载: AI聊天 | 社交功能 | 数据报表');
+    console.log('⌨️ 新快捷键: V AI聊天 | I 访客 | P 报表');
+};
