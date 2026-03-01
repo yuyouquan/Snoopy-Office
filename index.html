@@ -220,7 +220,7 @@
                 osc.start();
                 gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
                 osc.stop(this.ctx.currentTime + duration);
-.stop(this.ctx.current            } catch (e) {}
+            } catch (e) {}
         }
         
         playClick() { this.playNote(800, 0.05, 'square'); }
