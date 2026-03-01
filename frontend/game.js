@@ -7855,10 +7855,431 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
 });
 
-// ==================== 初始化 (Iteration 32) ====================
-const originalInit32 = init;
+// ==================== 等级系统 (Iteration 33) ====================
+const LevelSystem = {
+    show: false,
+    teamLevel: 1,
+    teamXP: 0,
+    xpToNextLevel: 100,
+    members: [],
+    
+    // 角色等级数据
+    characterLevels: {},
+    
+    init() {
+        // 初始化角色等级
+        characters.forEach(char => {
+            this.characterLevels[char.id] = {
+                level: 1,
+                xp: 0,
+                xpToNext: 50,
+                title: '实习',
+                skills: []
+            };
+        });
+    },
+    
+    addXP(characterId, amount) {
+        const charLevel = this.characterLevels[characterId];
+        if (!charLevel) return;
+        
+        charLevel.xp += amount;
+        
+        // 检查升级
+        while (charLevel.xp >= charLevel.xpToNext) {
+            charLevel.xp -= charLevel.xpToNext;
+            charLevel.level++;
+            charLevel.xpToNext = Math.floor(charLevel.xpToNext * 1.5);
+            charLevel.title = this.getTitle(charLevel.level);
+            
+            // 升级特效
+            this.showLevelUp(characterId, charLevel.level);
+        }
+        
+        // 团队经验
+        this.teamXP += amount;
+        while (this.teamXP >= this.xpToNextLevel) {
+            this.teamXP -= this.xpToNextLevel;
+            this.teamLevel++;
+            this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.3);
+        }
+    },
+    
+    getTitle(level) {
+        const titles = [
+            '实习', '初级', '中级', '高级', '资深',
+            '专家', '领袖', '大师', '传奇', '神话'
+        ];
+        return titles[Math.min(level - 1, titles.length - 1)];
+    },
+    
+    showLevelUp(characterId, newLevel) {
+        const char = characters.find(c => c.id === characterId);
+        if (char) {
+            // 简单的升级提示
+            console.log(`🎉 ${char.name} 升级到 ${newLevel} 级!`);
+        }
+    },
+    
+    draw() {
+        if (!this.show) return;
+        
+        const x = CANVAS_WIDTH - 220;
+        const y = 80;
+        const w = 200;
+        const h = 280;
+        
+        // 面板背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        roundRect(ctx, x, y, w, h, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // 标题
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 14px "Pixelify Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⭐ 等级系统', x + w/2, y + 22);
+        
+        // 团队等级
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(`团队等级: Lv.${this.teamLevel}`, x + w/2, y + 45);
+        
+        // 经验条
+        const barX = x + 15;
+        const barY = y + 55;
+        const barW = w - 30;
+        const barH = 12;
+        
+        ctx.fillStyle = '#333';
+        roundRect(ctx, barX, barY, barW, barH, 3);
+        ctx.fill();
+        
+        const xpRatio = this.teamXP / this.xpToNextLevel;
+        const gradient = ctx.createLinearGradient(barX, 0, barX + barW * xpRatio, 0);
+        gradient.addColorStop(0, '#FFD700');
+        gradient.addColorStop(1, '#FFA500');
+        ctx.fillStyle = gradient;
+        roundRect(ctx, barX, barY, barW * xpRatio, barH, 3);
+        ctx.fill();
+        
+        ctx.fillStyle = '#aaa';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${this.teamXP}/${this.xpToNextLevel} XP`, x + w/2, barY + 10);
+        
+        // 角色等级列表
+        let listY = y + 80;
+        ctx.textAlign = 'left';
+        
+        characters.slice(0, 6).forEach(char => {
+            const charLevel = this.characterLevels[char.id];
+            if (!charLevel) return;
+            
+            // 角色图标
+            ctx.fillStyle = char.color || '#888';
+            ctx.fillRect(x + 15, listY - 8, 16, 16);
+            
+            // 角色名和等级
+            ctx.fillStyle = '#fff';
+            ctx.font = '11px sans-serif';
+            ctx.fillText(`${char.name}`, x + 38, listY);
+            
+            ctx.fillStyle = '#FFD700';
+            ctx.fillText(`Lv.${charLevel.level}`, x + 120, listY);
+            
+            // 经验条
+            ctx.fillStyle = '#333';
+            ctx.fillRect(x + 155, listY - 6, 30, 6);
+            const charXpRatio = charLevel.xp / charLevel.xpToNext;
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillRect(x + 155, listY - 6, 30 * charXpRatio, 6);
+            
+            listY += 28;
+        });
+        
+        // 快捷键提示
+        ctx.fillStyle = '#666';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('按 G 关闭', x + w/2, y + h - 10);
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`⭐ 等级系统: ${this.show ? '开启' : '关闭'}`);
+    }
+};
+
+// ==================== 技能树系统 (Iteration 33) ====================
+const SkillTreeSystem = {
+    show: false,
+    selectedCharacter: null,
+    
+    // 技能定义
+    skills: {
+        coding: { name: '编码', icon: '💻', maxLevel: 5, desc: '提升写代码速度' },
+        communication: { name: '沟通', icon: '💬', maxLevel: 5, desc: '提升协作效率' },
+        analysis: { name: '分析', icon: '📊', maxLevel: 5, desc: '提升问题分析能力' },
+        creativity: { name: '创意', icon: '💡', maxLevel: 5, desc: '提升创新能力' },
+        leadership: { name: '领导', icon: '👑', maxLevel: 5, desc: '提升团队领导力' },
+        efficiency: { name: '效率', icon: '⚡', maxLevel: 5, desc: '提升工作效率' }
+    },
+    
+    characterSkills: {},
+    
+    init() {
+        characters.forEach(char => {
+            this.characterSkills[char.id] = {
+                coding: 0,
+                communication: 0,
+                analysis: 0,
+                creativity: 0,
+                leadership: 0,
+                efficiency: 0
+            };
+        });
+    },
+    
+    upgradeSkill(characterId, skillName) {
+        const skills = this.characterSkills[characterId];
+        const skill = this.skills[skillName];
+        if (!skills || !skill) return;
+        
+        if (skills[skillName] < skill.maxLevel) {
+            skills[skillName]++;
+            AudioSystem.playSuccess();
+            console.log(`🎓 ${characters.find(c => c.id === characterId)?.name} 升级了 ${skill.name}!`);
+        }
+    },
+    
+    draw() {
+        if (!this.show) return;
+        
+        const x = CANVAS_WIDTH - 280;
+        const y = 80;
+        const w = 260;
+        const h = 320;
+        
+        // 面板背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        roundRect(ctx, x, y, w, h, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#9C27B0';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // 标题
+        ctx.fillStyle = '#9C27B0';
+        ctx.font = 'bold 14px "Pixelify Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🎓 技能树', x + w/2, y + 22);
+        
+        // 选择角色
+        const char = this.selectedCharacter || characters[0];
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(`角色: ${char.name}`, x + w/2, y + 45);
+        
+        // 技能列表
+        const skillKeys = Object.keys(this.skills);
+        let gridY = y + 65;
+        
+        skillKeys.forEach((skillKey, idx) => {
+            const skill = this.skills[skillKey];
+            const charSkills = this.characterSkills[char.id];
+            const currentLevel = charSkills ? charSkills[skillKey] : 0;
+            
+            const col = idx % 3;
+            const row = Math.floor(idx / 3);
+            const skillX = x + 20 + col * 80;
+            const skillY = gridY + row * 80;
+            
+            // 技能背景
+            ctx.fillStyle = currentLevel > 0 ? 'rgba(156, 39, 176, 0.3)' : 'rgba(50, 50, 50, 0.5)';
+            roundRect(ctx, skillX, skillY, 70, 70, 5);
+            ctx.fill();
+            
+            // 技能图标
+            ctx.fillStyle = '#fff';
+            ctx.font = '20px sans-serif';
+            ctx.fillText(skill.icon, skillX + 25, skillY + 25);
+            
+            // 技能名
+            ctx.font = '9px sans-serif';
+            ctx.fillText(skill.name, skillX + 35, skillY + 42);
+            
+            // 等级星星
+            ctx.fillStyle = '#FFD700';
+            for (let i = 0; i < skill.maxLevel; i++) {
+                ctx.fillText(i < currentLevel ? '★' : '☆', skillX + 8 + i * 12, skillY + 58);
+            }
+        });
+        
+        // 说明
+        ctx.fillStyle = '#888';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('完成任务可获得技能点', x + w/2, y + h - 25);
+        
+        // 快捷键
+        ctx.fillStyle = '#666';
+        ctx.fillText('按 U 关闭 | 点击角色切换', x + w/2, y + h - 10);
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`🎓 技能树: ${this.show ? '开启' : '关闭'}`);
+    }
+};
+
+// ==================== 截图分享系统 (Iteration 33) ====================
+const ShareSystem = {
+    show: false,
+    
+    draw() {
+        if (!this.show) return;
+        
+        const x = CANVAS_WIDTH / 2 - 150;
+        const y = CANVAS_HEIGHT / 2 - 120;
+        const w = 300;
+        const h = 240;
+        
+        // 面板背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        roundRect(ctx, x, y, w, h, 12);
+        ctx.fill();
+        ctx.strokeStyle = '#2196F3';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // 标题
+        ctx.fillStyle = '#2196F3';
+        ctx.font = 'bold 16px "Pixelify Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('📸 截图分享', x + w/2, y + 30);
+        
+        // 预览区域
+        ctx.fillStyle = '#1a1a2e';
+        roundRect(ctx, x + 30, y + 50, w - 60, 120, 8);
+        ctx.fill();
+        
+        ctx.fillStyle = '#666';
+        ctx.font = '12px sans-serif';
+        ctx.fillText('点击下方按钮生成截图', x + w/2, y + 115);
+        
+        // 按钮
+        const btnY = y + 185;
+        
+        // 复制到剪贴板
+        ctx.fillStyle = '#4CAF50';
+        roundRect(ctx, x + 30, btnY, w - 60, 35, 5);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px sans-serif';
+        ctx.fillText('📋 复制图片到剪贴板', x + w/2, btnY + 22);
+        
+        // 下载
+        ctx.fillStyle = '#2196F3';
+        roundRect(ctx, x + 30, btnY + 42, w - 60, 35, 5);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.fillText('💾 下载 PNG 图片', x + w/2, btnY + 64);
+        
+        // 快捷键
+        ctx.fillStyle = '#666';
+        ctx.font = '9px sans-serif';
+        ctx.fillText('按 Y 关闭 | 点击按钮操作', x + w/2, y + h - 10);
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+        console.log(`📸 截图分享: ${this.show ? '开启' : '关闭'}`);
+    },
+    
+    // 生成Canvas截图
+    async capture() {
+        try {
+            const dataUrl = canvas.toDataURL('image/png');
+            return dataUrl;
+        } catch (e) {
+            console.error('截图失败:', e);
+            return null;
+        }
+    },
+    
+    // 复制到剪贴板
+    async copyToClipboard() {
+        try {
+            const dataUrl = await this.capture();
+            if (!dataUrl) return;
+            
+            const blob = await (await fetch(dataUrl)).blob();
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+            ]);
+            
+            AudioSystem.playSuccess();
+            alert('截图已复制到剪贴板！');
+        } catch (e) {
+            console.error('复制失败:', e);
+            alert('复制失败，请使用下载功能');
+        }
+    },
+    
+    // 下载图片
+    async download() {
+        try {
+            const dataUrl = await this.capture();
+            if (!dataUrl) return;
+            
+            const link = document.createElement('a');
+            link.download = `Snoopy-Office-${Date.now()}.png`;
+            link.href = dataUrl;
+            link.click();
+            
+            AudioSystem.playSuccess();
+            console.log('截图已下载');
+        } catch (e) {
+            console.error('下载失败:', e);
+        }
+    }
+};
+
+// ==================== 快捷键 (Iteration 33) ====================
+const KEYBOARD_SHORTCUTS_33 = {
+    'g': () => LevelSystem.toggle(),
+    'G': () => LevelSystem.toggle(),
+    'u': () => SkillTreeSystem.toggle(),
+    'U': () => SkillTreeSystem.toggle(),
+    'y': () => ShareSystem.toggle(),
+    'Y': () => ShareSystem.toggle()
+};
+
+// 合并快捷键
+Object.assign(KEYBOARD_SHORTCUTS, KEYBOARD_SHORTCUTS_33);
+
+// 修改渲染函数包含新系统
+const originalRender33 = render;
+render = function() {
+    originalRender33();
+    LevelSystem.draw();
+    SkillTreeSystem.draw();
+    ShareSystem.draw();
+};
+
+// ==================== 初始化 (Iteration 33) ====================
+const originalInit33 = init;
 init = function() {
-    originalInit32();
-    console.log('🎮 迭代32功能已加载: AI聊天 | 社交功能 | 数据报表');
-    console.log('⌨️ 新快捷键: V AI聊天 | I 访客 | P 报表');
+    originalInit33();
+    LevelSystem.init();
+    SkillTreeSystem.init();
+    console.log('🎮 迭代33功能已加载: 等级系统 | 技能树 | 截图分享');
+    console.log('⌨️ 新快捷键: G 等级 | U 技能树 | Y 截图');
 };
