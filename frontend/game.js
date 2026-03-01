@@ -1036,6 +1036,12 @@ function render() {
     // 绘制效率排名面板 (Iteration 18)
     drawRankingPanel();
     
+    // 绘制效率趋势图表 (Iteration 21)
+    EfficiencyChart.draw();
+    
+    // 绘制每日任务趋势 (Iteration 21)
+    DailyTrend.draw();
+    
     // 绘制时间/天气状态指示 (Iteration 19)
     drawStatusIndicators();
     
@@ -1451,6 +1457,9 @@ function updateStats() {
         const zoneNames = topZones.map(([key, count]) => ZONES[key]?.name || key).slice(0, 2);
         document.getElementById('stat-top-zones').textContent = zoneNames.join(' > ') || '--';
     }
+    
+    // 记录效率数据 (Iteration 21)
+    EfficiencyChart.addDataPoint(working, avgProgress);
 }
 
 // ==================== 增强功能：平滑移动 ====================
@@ -2157,6 +2166,10 @@ KEYBOARD_SHORTCUTS['v'] = () => {
     FollowSystem.unfollow();
 };  // 取消跟随
 
+// 背景音乐切换 (Iteration 21)
+KEYBOARD_SHORTCUTS['b'] = () => BackgroundMusic.toggle();
+KEYBOARD_SHORTCUTS['B'] = () => BackgroundMusic.toggle();
+
 // 切换排名面板显示
 let showRanking = false;
 function toggleRanking() {
@@ -2179,6 +2192,340 @@ KEYBOARD_SHORTCUTS['m'] = () => TimeOfDaySystem.cycle();
 KEYBOARD_SHORTCUTS['w'] = () => WeatherSystem.toggle();
 KEYBOARD_SHORTCUTS['W'] = () => WeatherSystem.toggle();
 
+// ==================== OpenClaw Gateway 对接 (Iteration 21) ====================
+const OpenClawGateway = {
+    gatewayUrl: 'http://localhost:4899', // 默认Gateway地址
+    connected: false,
+    retryCount: 0,
+    maxRetries: 3,
+    
+    // 尝试从OpenClaw获取真实状态
+    async fetchStatus() {
+        try {
+            // 尝试连接OpenClaw API
+            const response = await fetch(`${this.gatewayUrl}/api/status`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(2000)
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.connected = true;
+                this.retryCount = 0;
+                console.log('🔗 OpenClaw Gateway: 已连接');
+                return this.transformOpenClawData(data);
+            }
+        } catch (error) {
+            this.retryCount++;
+            if (this.retryCount <= this.maxRetries) {
+                console.log(`🔗 OpenClaw Gateway: 连接失败 (${this.retryCount}/${this.maxRetries}), 使用模拟数据`);
+            }
+            this.connected = false;
+        }
+        return null;
+    },
+    
+    // 转换OpenClaw数据格式
+    transformOpenClawData(data) {
+        if (!data || !data.data) return null;
+        
+        const chars = data.data.characters || [];
+        return chars.map(c => ({
+            id: c.id,
+            name: c.name,
+            status: c.status === 'active' ? 'working' : 'idle',
+            task: c.task || '待命',
+            progress: c.progress || 0,
+            zone: this.mapToZone(c.role || 'assistant')
+        }));
+    },
+    
+    // 映射角色到区域
+    mapToZone(role) {
+        const zoneMap = {
+            'boss': 'boss',
+            'assistant': 'ai',
+            'pm': 'pm',
+            'project_manager': 'project',
+            'frontend': 'dev',
+            'backend': 'dev',
+            'qa': 'test',
+            'security': 'security',
+            'researcher': 'search',
+            'writer': 'break'
+        };
+        return zoneMap[role] || 'break';
+    },
+    
+    // 检查连接状态
+    getStatus() {
+        return this.connected ? '🟢 Gateway已连接' : '🟡 使用模拟数据';
+    }
+};
+
+// ==================== 实时效率图表系统 (Iteration 21) ====================
+const EfficiencyChart = {
+    history: [],
+    maxHistory: 30, // 保存30个数据点
+    show: false,
+    
+    // 添加数据点
+    addDataPoint(working, progress) {
+        this.history.push({
+            time: Date.now(),
+            working,
+            progress
+        });
+        
+        // 保持历史数据长度
+        if (this.history.length > this.maxHistory) {
+            this.history.shift();
+        }
+    },
+    
+    // 绘制效率图表
+    draw() {
+        if (!this.show || this.history.length < 2) return;
+        
+        const chartWidth = 200;
+        const chartHeight = 80;
+        const chartX = canvas.width - chartWidth - 10;
+        const chartY = canvas.height - chartHeight - 10;
+        
+        // 背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(chartX, chartY, chartWidth, chartHeight);
+        ctx.strokeStyle = COLORS.blue;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(chartX, chartY, chartWidth, chartHeight);
+        
+        // 标题
+        ctx.fillStyle = COLORS.blue;
+        ctx.font = 'bold 10px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText('📈 效率趋势', chartX + 8, chartY + 15);
+        
+        // 绘制进度曲线
+        ctx.beginPath();
+        ctx.strokeStyle = COLORS.green;
+        ctx.lineWidth = 2;
+        
+        this.history.forEach((point, i) => {
+            const x = chartX + 10 + (i / (this.maxHistory - 1)) * (chartWidth - 20);
+            const y = chartY + chartHeight - 15 - (point.progress / 100) * (chartHeight - 30);
+            
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        ctx.stroke();
+        
+        // 绘制工作人数曲线
+        ctx.beginPath();
+        ctx.strokeStyle = COLORS.orange;
+        ctx.lineWidth = 1;
+        
+        this.history.forEach((point, i) => {
+            const x = chartX + 10 + (i / (this.maxHistory - 1)) * (chartWidth - 20);
+            const y = chartY + chartHeight - 15 - (point.working / 10) * (chartHeight - 30);
+            
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        ctx.stroke();
+        
+        // 图例
+        ctx.font = '8px "Courier New"';
+        ctx.fillStyle = COLORS.green;
+        ctx.fillText('● 进度', chartX + 10, chartY + chartHeight - 5);
+        ctx.fillStyle = COLORS.orange;
+        ctx.fillText('● 人数', chartX + 50, chartY + chartHeight - 5);
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+    }
+};
+
+// 快捷键绑定
+KEYBOARD_SHORTCUTS['e'] = () => EfficiencyChart.toggle();
+KEYBOARD_SHORTCUTS['E'] = () => EfficiencyChart.toggle();
+
+// ==================== 背景音乐控制 (Iteration 21) ====================
+const BackgroundMusic = {
+    enabled: false,
+    tracks: [
+        { name: '🏢 办公室', url: null, icon: '🏢' },
+        { name: '🌙 放松', url: null, icon: '🌙' },
+        { name: '🎮 街机', url: null, icon: '🎮' }
+    ],
+    currentTrack: 0,
+    oscillators: [],
+    
+    // 生成简单的像素风格背景音
+    play() {
+        if (this.enabled) return;
+        this.enabled = true;
+        
+        try {
+            const ctx = AudioSystem.context || new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 创建简单的环境音
+            this.createAmbientSound(ctx, 200, 0.02); // 低频
+            this.createAmbientSound(ctx, 400, 0.01); // 中频
+            
+            AudioSystem.playTone(440, 0.3);
+            console.log('🎵 背景音乐: 播放中');
+        } catch (e) {
+            console.warn('背景音乐播放失败:', e);
+        }
+    },
+    
+    createAmbientSound(ctx, freq, vol) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        
+        // 添加轻微的频率波动
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        lfo.frequency.setValueAtTime(0.5, ctx.currentTime);
+        lfoGain.gain.setValueAtTime(5, ctx.currentTime);
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        
+        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.start();
+        lfo.start();
+        
+        this.oscillators.push({ osc, gain, lfo });
+    },
+    
+    stop() {
+        this.enabled = false;
+        this.oscillators.forEach(o => {
+            try {
+                o.osc.stop();
+                o.lfo.stop();
+            } catch (e) {}
+        });
+        this.oscillators = [];
+        console.log('🎵 背景音乐: 已停止');
+    },
+    
+    toggle() {
+        if (this.enabled) {
+            this.stop();
+        } else {
+            this.play();
+        }
+        AudioSystem.playClick();
+    },
+    
+    cycle() {
+        this.currentTrack = (this.currentTrack + 1) % this.tracks.length;
+        const track = this.tracks[this.currentTrack];
+        console.log(`🎵 切换音轨: ${track.name}`);
+        if (this.enabled) {
+            this.stop();
+            this.play();
+        }
+    }
+};
+
+// ==================== 每日任务趋势图 (Iteration 21) ====================
+const DailyTrend = {
+    show: false,
+    tasksCompleted: 0,
+    tasksTotal: 0,
+    hourlyData: new Array(24).fill(0),
+    
+    // 记录任务完成
+    recordTaskComplete() {
+        this.tasksCompleted++;
+        const hour = new Date().getHours();
+        this.hourlyData[hour]++;
+    },
+    
+    // 绘制趋势面板
+    draw() {
+        if (!this.show) return;
+        
+        const panelWidth = 250;
+        const panelHeight = 150;
+        const panelX = canvas.width / 2 - panelWidth / 2;
+        const panelY = canvas.height / 2 - panelHeight / 2;
+        
+        // 背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+        ctx.strokeStyle = COLORS.yellow;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+        
+        // 标题
+        ctx.fillStyle = COLORS.yellow;
+        ctx.font = 'bold 14px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('📊 每日任务趋势', panelX + panelWidth / 2, panelY + 25);
+        
+        // 统计信息
+        ctx.font = '12px "Courier New"';
+        ctx.fillStyle = COLORS.white;
+        ctx.textAlign = 'left';
+        ctx.fillText(`今日完成: ${this.tasksCompleted}`, panelX + 15, panelY + 50);
+        ctx.fillText(`目标: ${this.tasksTotal}`, panelX + 15, panelY + 70);
+        ctx.fillText(`完成率: ${this.tasksTotal > 0 ? Math.round(this.tasksCompleted / this.tasksTotal * 100) : 0}%`, panelX + 15, panelY + 90);
+        
+        // 小时柱状图
+        const barWidth = (panelWidth - 30) / 24;
+        const maxVal = Math.max(...this.hourlyData, 1);
+        
+        this.hourlyData.forEach((val, i) => {
+            const x = panelX + 15 + i * barWidth;
+            const barHeight = (val / maxVal) * 30;
+            const y = panelY + 115 - barHeight;
+            
+            // 当前小时高亮
+            const currentHour = new Date().getHours();
+            ctx.fillStyle = i === currentHour ? COLORS.yellow : COLORS.blue;
+            ctx.fillRect(x, y, barWidth - 1, barHeight);
+        });
+        
+        // 关闭提示
+        ctx.fillStyle = COLORS.lightGray;
+        ctx.font = '10px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('按 E 关闭', panelX + panelWidth / 2, panelY + panelHeight - 10);
+    },
+    
+    toggle() {
+        this.show = !this.show;
+        AudioSystem.playClick();
+    }
+};
+
+// 更新音乐按钮状态
+function updateMusicButton() {
+    const btn = document.getElementById('music-toggle');
+    if (btn) {
+        btn.textContent = BackgroundMusic.enabled ? '🔊' : '🔇';
+    }
+}
+
 // ==================== 状态指示器绘制 ====================
 function drawStatusIndicators() {
     const padding = 10;
@@ -2197,6 +2544,12 @@ function drawStatusIndicators() {
         const weatherIcon = WeatherSystem.types[WeatherSystem.current].name.split(' ')[0];
         ctx.fillText(weatherIcon, x - 100, y);
     }
+    
+    // 绘制Gateway状态
+    ctx.font = '10px "Courier New"';
+    const gatewayStatus = OpenClawGateway.getStatus();
+    ctx.fillStyle = OpenClawGateway.connected ? COLORS.green : COLORS.orange;
+    ctx.fillText(gatewayStatus, x - 180, y);
 }
 
 window.onload = init;
