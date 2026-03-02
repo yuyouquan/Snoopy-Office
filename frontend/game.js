@@ -8994,15 +8994,116 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// 智能提醒系统 (迭代49)
+const SmartReminder = {
+    enabled: true,
+    lastNotification: 0,
+    notifications: [],
+    
+    init() {
+        // 检查提醒
+        setInterval(() => this.check(), 60000); // 每分钟检查
+        console.log('🔔 智能提醒系统已启动');
+    },
+    
+    check() {
+        if (!this.enabled) return;
+        
+        const now = Date.now();
+        if (now - this.lastNotification < 300000) return; // 5分钟最小间隔
+        
+        const hour = new Date().getHours();
+        
+        // 早晨提醒
+        if (hour === 9 && now - this.lastNotification > 3600000) {
+            this.notify('☀️ 早上好！新的一天开始了', 'start');
+            this.lastNotification = now;
+        }
+        
+        // 午间提醒
+        if (hour === 12 && now - this.lastNotification > 3600000) {
+            this.notify('🍱 午休时间到！记得吃饭休息', 'lunch');
+            this.lastNotification = now;
+        }
+        
+        // 下午提醒
+        if (hour === 14 && now - this.lastNotification > 3600000) {
+            this.notify('☕ 下午好！来杯咖啡提神', 'afternoon');
+            this.lastNotification = now;
+        }
+        
+        // 傍晚提醒
+        if (hour === 18 && now - this.lastNotification > 3600000) {
+            this.notify('🌆 下班时间！整理一下今天的工作', 'evening');
+            this.lastNotification = now;
+        }
+        
+        // 检查角色状态
+        this.checkCharacters();
+    },
+    
+    checkCharacters() {
+        if (typeof characters === 'undefined') return;
+        
+        const idleChars = characters.filter(c => c.status === 'idle');
+        if (idleChars.length > 5) {
+            this.notify(`🤔 有${idleChars.length}位成员在待命，任务分配优化中...`, 'idle');
+        }
+        
+        const workingChars = characters.filter(c => c.status === 'working' && c.progress > 80);
+        if (workingChars.length > 0) {
+            const names = workingChars.slice(0, 3).map(c => c.name).join('、');
+            this.notify(`🎉 ${names} 即将完成任务！`, 'progress');
+        }
+    },
+    
+    notify(message, type) {
+        // 显示Toast通知
+        const toast = document.createElement('div');
+        toast.className = 'smart-toast';
+        toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()">×</button>`;
+        toast.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+            font-size: 14px;
+            max-width: 300px;
+        `;
+        document.body.appendChild(toast);
+        
+        // 5秒后自动消失
+        setTimeout(() => {
+            if (toast.parentElement) toast.remove();
+        }, 5000);
+        
+        // 记录通知
+        this.notifications.push({ message, type, time: Date.now() });
+    },
+    
+    toggle() {
+        this.enabled = !this.enabled;
+        AudioSystem.playClick();
+        console.log(this.enabled ? '🔔 智能提醒已开启' : '🔕 智能提醒已关闭');
+    }
+};
+
 // 修改初始化函数
 const originalInit48 = init;
 init = function() {
     originalInit48();
-    console.log('📊 迭代48功能已加载: 性能监控 | 可访问性增强');
-    console.log('⌨️ 新快捷键: Alt+P 性能面板 | Alt+A 高对比度 | Alt+; 大字体 | Alt+\' 减少动画');
+    SmartReminder.init();
+    console.log('📊 迭代49功能已加载: 智能提醒系统 | 时间段提醒 | 角色状态提醒');
 };
 
 // 导出供外部使用
 window.PerformanceMonitor = PerformanceMonitor;
 window.AccessibilitySystem = AccessibilitySystem;
 window.MemoryMonitor = MemoryMonitor;
+window.SmartReminder = SmartReminder;
