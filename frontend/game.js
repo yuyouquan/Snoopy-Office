@@ -8309,3 +8309,172 @@ init = function() {
 
 // 备用初始化 (1秒后)
 setTimeout(function() { if (!canvas) { console.log('备用初始化触发'); init(); } }, 1000);
+
+// ==================== 焦点模式 (Iteration 44) ====================
+// 允许用户用键盘快速浏览所有角色的详细信息
+const FocusMode = {
+    show: false,
+    currentIndex: 0,
+    characterList: [],
+    lastUpdate: 0,
+    
+    init() {
+        this.characterList = characters.map((c, i) => ({ ...c, index: i }));
+        console.log('🔍 焦点模式已初始化');
+    },
+    
+    // 打开焦点模式
+    open() {
+        if (characters.length === 0) return;
+        this.show = true;
+        this.currentIndex = 0;
+        this.updatePanel();
+        AudioSystem.playClick();
+        console.log('🔍 焦点模式: 开启');
+    },
+    
+    // 关闭焦点模式
+    close() {
+        this.show = false;
+        closePanel();
+        AudioSystem.playClick();
+        console.log('🔍 焦点模式: 关闭');
+    },
+    
+    // 切换焦点模式
+    toggle() {
+        if (this.show) {
+            this.close();
+        } else {
+            this.open();
+        }
+    },
+    
+    // 下一个角色
+    next() {
+        if (this.characterList.length === 0) return;
+        this.currentIndex = (this.currentIndex + 1) % this.characterList.length;
+        this.updatePanel();
+        AudioSystem.playSelect();
+    },
+    
+    // 上一个角色
+    prev() {
+        if (this.characterList.length === 0) return;
+        this.currentIndex = (this.currentIndex - 1 + this.characterList.length) % this.characterList.length;
+        this.updatePanel();
+        AudioSystem.playSelect();
+    },
+    
+    // 更新面板显示当前角色信息
+    updatePanel() {
+        const char = this.characterList[this.currentIndex];
+        if (!char) return;
+        
+        // 更新面板内容
+        const panel = document.getElementById('character-panel');
+        if (panel) {
+            panel.classList.remove('hidden');
+            document.getElementById('panel-name').textContent = char.name;
+            document.getElementById('panel-status').textContent = char.status === 'working' ? '工作中' : '待命中';
+            document.getElementById('panel-progress').style.width = char.progress + '%';
+            document.getElementById('panel-location').textContent = ZONES[char.zone]?.name || char.zone;
+            document.getElementById('panel-task').textContent = char.task || '无任务';
+            
+            // 生成时间线
+            const timeline = document.getElementById('panel-timeline');
+            if (timeline) {
+                timeline.innerHTML = `
+                    <div class="timeline-item">
+                        <span class="time">现在</span>
+                        <span class="desc">${char.task || '待命中'}</span>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="time">前${Math.floor(Math.random() * 30) + 1}分钟</span>
+                        <span class="desc">${this.getRandomTask()}</span>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="time">前${Math.floor(Math.random() * 60) + 30}分钟</span>
+                        <span class="desc">${this.getRandomTask()}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        // 高亮当前角色
+        this.highlightCharacter(char);
+    },
+    
+    // 获取随机任务描述
+    getRandomTask() {
+        const tasks = ['编写代码', 'code review', '写文档', '开会', '测试', '调试', '部署', '需求评审', '设计接口', '优化性能'];
+        return tasks[Math.floor(Math.random() * tasks.length)];
+    },
+    
+    // 高亮画布上的角色
+    highlightCharacter(char) {
+        // 刷新画布以显示高亮
+        render();
+        
+        // 在角色周围画一个闪烁的边框
+        if (canvas && char) {
+            const ctx = canvas.getContext('2d');
+            const zone = ZONES[char.zone];
+            if (zone) {
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(zone.x - 5, zone.y - 5, zone.width + 10, zone.height + 10);
+                ctx.setLineDash([]);
+            }
+        }
+    },
+    
+    // 绘制焦点模式UI
+    draw() {
+        if (!this.show) return;
+        
+        const ctx = canvas.getContext('2d');
+        const char = this.characterList[this.currentIndex];
+        if (!char) return;
+        
+        // 底部指示器
+        const indicatorY = canvas.height - 30;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, indicatorY, canvas.width, 30);
+        
+        // 显示当前索引
+        ctx.fillStyle = '#fff';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🔍 焦点模式 [${this.currentIndex + 1}/${this.characterList.length}] ← → 切换 | ESC 关闭`, canvas.width / 2, indicatorY + 20);
+        ctx.textAlign = 'left';
+    }
+};
+
+// ==================== 快捷键 (Iteration 44) ====================
+const KEYBOARD_SHORTCUTS_44 = {
+    'f': () => FocusMode.toggle(),
+    'F': () => FocusMode.toggle(),
+    'ArrowRight': () => { if (FocusMode.show) FocusMode.next(); },
+    'ArrowLeft': () => { if (FocusMode.show) FocusMode.prev(); }
+};
+
+// 合并快捷键
+Object.assign(KEYBOARD_SHORTCUTS, KEYBOARD_SHORTCUTS_44);
+
+// 修改渲染函数包含新系统
+const originalRender44 = render;
+render = function() {
+    originalRender44();
+    FocusMode.draw();
+};
+
+// 修改初始化函数
+const originalInit44 = init;
+init = function() {
+    originalInit44();
+    FocusMode.init();
+    console.log('🔍 迭代44功能已加载: 焦点模式');
+    console.log('⌨️ 新快捷键: F 焦点模式 | ← → 切换角色');
+};
