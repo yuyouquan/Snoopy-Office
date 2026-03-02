@@ -1496,7 +1496,11 @@ function updateTime() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
-    document.getElementById('time').textContent = `🕐 ${hours}:${minutes}`;
+    const month = now.getMonth() + 1;
+    const date = now.getDate();
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    const weekday = weekdays[now.getDay()];
+    document.getElementById('time').textContent = `📅 ${month}/${date}(${weekday}) 🕐 ${hours}:${minutes}`;
     updateStats();
 }
 
