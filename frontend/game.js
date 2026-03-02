@@ -819,11 +819,23 @@ function simulateOpenClawStatus() {
 // ==================== 初始化 ====================
 
 function init() {
-    canvas = document.getElementById('office');
-    ctx = canvas.getContext('2d');
-    
-    // 像素化渲染
-    ctx.imageSmoothingEnabled = false;
+    try {
+        console.log('Initializing Snoopy Office...');
+        canvas = document.getElementById('office');
+        if (!canvas) {
+            console.error('Canvas not found!');
+            return;
+        }
+        console.log('Canvas found:', canvas);
+        ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('Context not available!');
+            return;
+        }
+        console.log('Context initialized');
+        
+        // 像素化渲染
+        ctx.imageSmoothingEnabled = false;
     
     // 绑定点击事件
     canvas.addEventListener('click', handleClick);
@@ -983,18 +995,23 @@ const TaskNotification = {
 function gameLoop() {
     if (!isRunning) return;
     
-    update();
-    render();
-    
-    // 更新通知
-    TaskNotification.update();
-    
-    // 更新性能监控
-    if (window.PerformanceMonitor) {
-        PerformanceMonitor.update();
+    try {
+        update();
+        render();
+        
+        // 更新通知
+        TaskNotification.update();
+        
+        // 更新性能监控
+        if (window.PerformanceMonitor) {
+            PerformanceMonitor.update();
+        }
+        
+        animationFrame++;
+    } catch (e) {
+        console.error('Game loop error:', e);
     }
     
-    animationFrame++;
     requestAnimationFrame(gameLoop);
 }
 
@@ -1097,8 +1114,8 @@ function render() {
 }
 
 function drawZones() {
-    // 绘制地板网格
-    ctx.strokeStyle = '#1a1a1a';
+    // 绘制地板网格 (调试: 使用更亮的颜色)
+    ctx.strokeStyle = '#444444';
     ctx.lineWidth = 1;
     for (let x = 0; x < canvas.width; x += 40) {
         ctx.beginPath();
@@ -8289,3 +8306,6 @@ init = function() {
     console.log('🎮 迭代33功能已加载: 等级系统 | 技能树 | 截图分享');
     console.log('⌨️ 新快捷键: G 等级 | U 技能树 | Y 截图');
 };
+
+// 备用初始化 (1秒后)
+setTimeout(function() { if (!canvas) { console.log('备用初始化触发'); init(); } }, 1000);
