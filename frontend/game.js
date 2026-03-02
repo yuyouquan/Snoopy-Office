@@ -1447,6 +1447,12 @@ function resizeCanvas() {
     const container = canvas.parentElement;
     const maxWidth = container.clientWidth - 40;
     const scale = Math.min(maxWidth / 800, 1);
+    
+    // 设置实际画布分辨率
+    canvas.width = 800;
+    canvas.height = 600;
+    
+    // 设置CSS显示大小
     canvas.style.width = (800 * scale) + 'px';
     canvas.style.height = (600 * scale) + 'px';
 }
