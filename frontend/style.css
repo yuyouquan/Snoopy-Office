@@ -510,3 +510,89 @@ footer {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
 }
+
+/* 迭代48: 可访问性样式 */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* 高对比度模式 */
+body.high-contrast {
+    --bg-dark: #000000;
+    --bg-panel: #1a1a1a;
+    --border: #ffffff;
+    --text-primary: #ffffff;
+    --accent: #00ff00;
+}
+
+body.high-contrast .panel,
+body.high-contrast .stats-panel,
+body.high-contrast .legend {
+    border: 3px solid #ffffff !important;
+}
+
+body.high-contrast button,
+body.high-contrast .sound-btn {
+    border: 2px solid #ffffff !important;
+}
+
+/* 大字体模式 */
+body.large-text {
+    font-size: 1.2em;
+}
+
+body.large-text .panel-content,
+body.large-text .stats-panel {
+    font-size: 1.1em;
+}
+
+/* 减少动画模式 */
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+}
+
+/* 焦点可见模式 */
+body.focus-visible *:focus {
+    outline: 3px solid #00e436 !important;
+    outline-offset: 2px;
+}
+
+/* 性能面板 */
+#performance-panel {
+    background: var(--bg-panel, #2d2d35);
+    border: 2px solid var(--border, #3d3d4a);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#performance-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border, #3d3d4a);
+}
+
+#performance-panel h3 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-primary, #fff1e8);
+}
+
+#performance-fps {
+    font-family: 'Courier New', monospace;
+}

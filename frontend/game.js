@@ -8791,11 +8791,218 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// 修改初始化函数
-const originalInit47 = init;
-init = function() {
-    originalInit47();
-    VoiceSystem.init();
-    console.log('🎤 迭代47功能已加载: 语音交互 | 节日主题');
-    console.log('⌨️ 新快捷键: Alt+V 语音 | Alt+S 春节 | Alt+C 圣诞 | Alt+H 万圣 | Esc 清除');
+// ==================== 迭代48: 性能监控 + 可访问性增强 ====================
+
+// 性能监控系统
+const PerformanceMonitor = {
+    fps: 60,
+    frameCount: 0,
+    lastTime: performance.now(),
+    history: [],
+    maxHistory: 60,
+    
+    update() {
+        this.frameCount++;
+        const now = performance.now();
+        const delta = now - this.lastTime;
+        
+        if (delta >= 1000) {
+            this.fps = Math.round((this.frameCount * 1000) / delta);
+            this.history.push(this.fps);
+            if (this.history.length > this.maxHistory) {
+                this.history.shift();
+            }
+            this.frameCount = 0;
+            this.lastTime = now;
+            
+            // 更新UI
+            this.updateDisplay();
+        }
+    },
+    
+    updateDisplay() {
+        const el = document.getElementById('performance-fps');
+        if (el) {
+            el.textContent = `FPS: ${this.fps}`;
+            el.style.color = this.fps >= 50 ? '#00e436' : this.fps >= 30 ? '#ffec27' : '#ff004d';
+        }
+    },
+    
+    getAverageFPS() {
+        if (this.history.length === 0) return 60;
+        return Math.round(this.history.reduce((a, b) => a + b, 0) / this.history.length);
+    },
+    
+    toggle() {
+        const panel = document.getElementById('performance-panel');
+        if (panel) {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            AudioSystem.playClick();
+        }
+    }
 };
+
+// 可访问性增强系统
+const AccessibilitySystem = {
+    highContrast: false,
+    largeText: false,
+    reducedMotion: false,
+    screenReaderMode: false,
+    focusVisible: true,
+    
+    init() {
+        // 检测系统偏好
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            this.reducedMotion = true;
+        }
+        if (window.matchMedia('(prefers-contrast: more)').matches) {
+            this.highContrast = true;
+        }
+        
+        // 添加ARIA实时区域
+        this.createLiveRegion();
+        
+        // 焦点管理
+        this.setupFocusManagement();
+    },
+    
+    createLiveRegion() {
+        const region = document.createElement('div');
+        region.id = 'aria-live-region';
+        region.setAttribute('aria-live', 'polite');
+        region.setAttribute('aria-atomic', 'true');
+        region.className = 'sr-only';
+        region.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
+        document.body.appendChild(region);
+    },
+    
+    announce(message) {
+        const region = document.getElementById('aria-live-region');
+        if (region) {
+            region.textContent = message;
+        }
+    },
+    
+    setupFocusManagement() {
+        // 确保焦点可见
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                this.focusVisible = true;
+                document.body.classList.add('focus-visible');
+            }
+        });
+    },
+    
+    toggleHighContrast() {
+        this.highContrast = !this.highContrast;
+        document.body.classList.toggle('high-contrast', this.highContrast);
+        this.announce(this.highContrast ? '高对比度模式已开启' : '高对比度模式已关闭');
+        AudioSystem.playClick();
+    },
+    
+    toggleLargeText() {
+        this.largeText = !this.largeText;
+        document.body.classList.toggle('large-text', this.largeText);
+        this.announce(this.largeText ? '大字体模式已开启' : '大字体模式已关闭');
+        AudioSystem.playClick();
+    },
+    
+    toggleReducedMotion() {
+        this.reducedMotion = !this.reducedMotion;
+        document.body.classList.toggle('reduced-motion', this.reducedMotion);
+        this.announce(this.reducedMotion ? '减少动画模式已开启' : '减少动画模式已关闭');
+        AudioSystem.playClick();
+    }
+};
+
+// 内存使用监控 (仅Chrome可用)
+const MemoryMonitor = {
+    enabled: false,
+    
+    check() {
+        if (performance.memory) {
+            this.enabled = true;
+            const used = performance.memory.usedJSHeapSize / 1048576;
+            const total = performance.memory.totalJSHeapSize / 1048576;
+            const limit = performance.memory.jsHeapSizeLimit / 1048576;
+            
+            const el = document.getElementById('memory-usage');
+            if (el) {
+                el.textContent = `内存: ${used.toFixed(1)}MB / ${total.toFixed(1)}MB`;
+            }
+            
+            return { used, total, limit };
+        }
+        return null;
+    }
+};
+
+// 性能面板HTML
+const PerformancePanelHTML = `
+    <div id="performance-panel" class="panel" style="display:none;position:fixed;top:80px;right:10px;z-index:1000;min-width:200px;">
+        <div class="panel-header">
+            <h3>📊 性能监控</h3>
+            <button onclick="PerformanceMonitor.toggle()" class="close-btn">×</button>
+        </div>
+        <div class="panel-content">
+            <div id="performance-fps" style="font-size:24px;font-weight:bold;">FPS: 60</div>
+            <div id="memory-usage" style="color:#83769c;">内存: --</div>
+            <div style="margin-top:10px;font-size:12px;color:#5f574f;">
+                <div>平均FPS: <span id="avg-fps">--</span></div>
+                <div>角色数: <span id="char-count">--</span></div>
+                <div>渲染时间: <span id="render-time">--</span>ms</div>
+            </div>
+        </div>
+    </div>
+`;
+
+// 在index.html中添加性能面板
+document.addEventListener('DOMContentLoaded', () => {
+    AccessibilitySystem.init();
+    
+    // 添加性能面板
+    const perfDiv = document.createElement('div');
+    perfDiv.innerHTML = PerformancePanelHTML;
+    document.body.appendChild(perfDiv.firstElementChild);
+    
+    // 更新统计
+    setInterval(() => {
+        PerformanceMonitor.update();
+        MemoryMonitor.check();
+        
+        const avgFps = PerformanceMonitor.getAverageFPS();
+        const el = document.getElementById('avg-fps');
+        if (el) el.textContent = avgFps;
+        
+        const charEl = document.getElementById('char-count');
+        if (charEl && typeof characters !== 'undefined') {
+            charEl.textContent = characters.length;
+        }
+    }, 1000);
+});
+
+// 键盘快捷键: P 性能面板 | A 高对比度 | ; 大字体 | ' 减少动画
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'p' && !e.ctrlKey && !e.metaKey) {
+        PerformanceMonitor.toggle();
+    } else if (e.key === 'a' && e.altKey) {
+        AccessibilitySystem.toggleHighContrast();
+    } else if (e.key === ';' && e.altKey) {
+        AccessibilitySystem.toggleLargeText();
+    } else if (e.key === "'" && e.altKey) {
+        AccessibilitySystem.toggleReducedMotion();
+    }
+});
+
+// 修改初始化函数
+const originalInit48 = init;
+init = function() {
+    originalInit48();
+    console.log('📊 迭代48功能已加载: 性能监控 | 可访问性增强');
+    console.log('⌨️ 新快捷键: Alt+P 性能面板 | Alt+A 高对比度 | Alt+; 大字体 | Alt+\' 减少动画');
+};
+
+// 导出供外部使用
+window.PerformanceMonitor = PerformanceMonitor;
+window.AccessibilitySystem = AccessibilitySystem;
+window.MemoryMonitor = MemoryMonitor;
