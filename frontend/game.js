@@ -8482,3 +8482,320 @@ init = function() {
     console.log('🔍 迭代44功能已加载: 焦点模式');
     console.log('⌨️ 新快捷键: F 焦点模式 | ← → 切换角色');
 };
+
+// ==================== 迭代47: 语音交互系统 ====================
+const VoiceSystem = {
+    recognition: null,
+    synthesis: null,
+    enabled: false,
+    listening: false,
+    
+    init() {
+        // 语音识别
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            this.recognition = new SpeechRecognition();
+            this.recognition.lang = 'zh-CN';
+            this.recognition.continuous = false;
+            this.recognition.interimResults = true;
+            
+            this.recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                console.log('🎤 识别到:', transcript);
+                this.processCommand(transcript);
+            };
+            
+            this.recognition.onend = () => {
+                this.listening = false;
+                this.updateButton();
+            };
+            
+            this.recognition.onerror = (e) => {
+                console.error('语音识别错误:', e.error);
+                this.listening = false;
+                this.updateButton();
+            };
+        }
+        
+        // 语音合成
+        this.synthesis = window.speechSynthesis;
+        
+        console.log('🎤 语音系统已初始化');
+    },
+    
+    startListening() {
+        if (!this.recognition) {
+            alert('您的浏览器不支持语音识别');
+            return;
+        }
+        this.listening = true;
+        this.recognition.start();
+        this.updateButton();
+        AudioSystem.playClick();
+    },
+    
+    stopListening() {
+        if (this.recognition) {
+            this.recognition.stop();
+            this.listening = false;
+            this.updateButton();
+        }
+    },
+    
+    speak(text) {
+        if (!this.synthesis) return;
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-CN';
+        utterance.rate = 1.0;
+        this.synthesis.speak(utterance);
+    },
+    
+    processCommand(text) {
+        const cmd = text.toLowerCase();
+        
+        if (cmd.includes('谁') || cmd.includes('在哪')) {
+            // 查找角色
+            characters.forEach(char => {
+                if (cmd.includes(char.name) || cmd.includes(char.role)) {
+                    this.speak(`${char.name}在${ZONES[char.zone]?.name || char.zone}，正在${char.task || '待命'}`);
+                }
+            });
+        } else if (cmd.includes('任务') || cmd.includes('做什么')) {
+            // 播报所有角色任务
+            let report = '当前任务状态：';
+            characters.forEach(char => {
+                report += `${char.name}: ${char.task || '待命'}。`;
+            });
+            this.speak(report);
+        } else if (cmd.includes('休息') || cmd.includes('摸鱼')) {
+            // 随机让一个角色摸鱼
+            const randomChar = characters[Math.floor(Math.random() * characters.length)];
+            randomChar.status = 'idle';
+            randomChar.zone = 'break';
+            randomChar.task = '摸鱼中';
+            this.speak(`让${randomChar.name}去休息区摸鱼了`);
+        } else if (cmd.includes('工作')) {
+            // 随机分配任务
+            const tasks = ['整理文档', '写代码', '测试', '搜索信息'];
+            const randomChar = characters[Math.floor(Math.random() * characters.length)];
+            const randomTask = tasks[Math.floor(Math.random() * tasks.length)];
+            randomChar.task = randomTask;
+            this.speak(`给${randomChar.name}分配了${randomTask}任务`);
+        } else {
+            this.speak('抱歉，我没听清楚。请试试问"谁在工作"或"任务是什么"');
+        }
+    },
+    
+    updateButton() {
+        const btn = document.getElementById('voice-btn');
+        if (btn) {
+            btn.textContent = this.listening ? '🔴' : '🎤';
+            btn.classList.toggle('listening', this.listening);
+        }
+    },
+    
+    toggle() {
+        if (this.listening) {
+            this.stopListening();
+        } else {
+            this.startListening();
+        }
+    }
+};
+
+// 快捷键注册
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'v' && e.altKey) {
+        VoiceSystem.toggle();
+    }
+});
+
+// ==================== 迭代47: 节日主题系统 ====================
+const HolidayThemeSystem = {
+    current: null,
+    
+    themes: {
+        spring: {
+            name: '🧧 春节主题',
+            bg: '#8B0000',
+            panel: '#B22222',
+            border: '#FFD700',
+            text: '#FFF8DC',
+            accent: '#FF4500',
+            special: '🧧'
+        },
+        christmas: {
+            name: '🎄 圣诞主题',
+            bg: '#0F4A0F',
+            panel: '#1E5631',
+            border: '#DC143C',
+            text: '#F0FFF0',
+            accent: '#FFD700',
+            special: '🎄'
+        },
+        halloween: {
+            name: '🎃 万圣节主题',
+            bg: '#1A1A2E',
+            panel: '#16213E',
+            border: '#FF6600',
+            text: '#E8E8E8',
+            accent: '#FFA500',
+            special: '🎃'
+        }
+    },
+    
+    apply(themeName) {
+        if (!this.themes[themeName]) {
+            console.error('未知主题:', themeName);
+            return;
+        }
+        
+        // 恢复默认主题
+        if (this.current) {
+            ThemeSystem.apply();
+        }
+        
+        this.current = themeName;
+        const theme = this.themes[themeName];
+        
+        // 应用节日主题
+        document.documentElement.style.setProperty('--bg-dark', theme.bg);
+        document.documentElement.style.setProperty('--bg-panel', theme.panel);
+        document.documentElement.style.setProperty('--border', theme.border);
+        document.documentElement.style.setProperty('--text-primary', theme.text);
+        document.documentElement.style.setProperty('--accent', theme.accent);
+        
+        // 添加节日特效
+        this.addHolidayEffects(theme.special);
+        
+        console.log(`🎉 节日主题已切换: ${theme.name}`);
+        AudioSystem.playClick();
+    },
+    
+    addHolidayEffects(emoji) {
+        // 在每个区域添加节日标记
+        const header = document.querySelector('.header');
+        if (header) {
+            header.innerHTML = `<span class="holiday-decor">${emoji}</span> ` + header.innerHTML;
+        }
+        
+        // 添加雪花效果（圣诞主题）
+        if (this.current === 'christmas') {
+            this.createSnowflakes();
+        }
+        
+        // 添加灯笼效果（春节主题）
+        if (this.current === 'spring') {
+            this.createLanterns();
+        }
+    },
+    
+    createSnowflakes() {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'snow-canvas';
+        canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+        document.body.appendChild(canvas);
+        
+        const ctx = canvas.getContext('2d');
+        const flakes = [];
+        
+        const resize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+        resize();
+        window.addEventListener('resize', resize);
+        
+        for (let i = 0; i < 50; i++) {
+            flakes.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                r: Math.random() * 3 + 1,
+                d: Math.random() * 1 + 0.5
+            });
+        }
+        
+        const animate = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            
+            flakes.forEach(flake => {
+                ctx.moveTo(flake.x, flake.y);
+                ctx.arc(flake.x, flake.y, flake.r, 0, Math.PI * 2, true);
+            });
+            ctx.fill();
+            
+            flakes.forEach(flake => {
+                flake.y += flake.d;
+                flake.x += Math.sin(flake.y / 50) * 0.5;
+                
+                if (flake.y > canvas.height) {
+                    flake.y = 0;
+                    flake.x = Math.random() * canvas.width;
+                }
+            });
+            
+            if (HolidayThemeSystem.current === 'christmas') {
+                requestAnimationFrame(animate);
+            }
+        };
+        animate();
+    },
+    
+    createLanterns() {
+        const decor = document.createElement('div');
+        decor.id = 'lanterns';
+        decor.style.cssText = 'position:fixed;top:0;left:0;width:100%;pointer-events:none;z-index:9998;display:flex;justify-content:space-around;padding:10px;';
+        
+        for (let i = 0; i < 8; i++) {
+            const lantern = document.createElement('div');
+            lantern.textContent = '🧧';
+            lantern.style.cssText = 'font-size:32px;animation:bounce 2s infinite;';
+            lantern.style.animationDelay = `${i * 0.2}s`;
+            decor.appendChild(lantern);
+        }
+        
+        document.body.appendChild(decor);
+    },
+    
+    clear() {
+        if (this.current) {
+            ThemeSystem.apply();
+            
+            // 清除特效
+            document.getElementById('snow-canvas')?.remove();
+            document.getElementById('lanterns')?.remove();
+            document.querySelector('.holiday-decor')?.remove();
+            
+            this.current = null;
+            console.log('🎉 节日主题已清除');
+            AudioSystem.playClick();
+        }
+    }
+};
+
+// ==================== 迭代47: 快捷键更新 ====================
+// 快捷键: V 语音交互 | S 春节主题 | C 圣诞主题 | H 万圣节 | Esc 清除主题
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 's' && e.altKey) {
+        HolidayThemeSystem.apply('spring');
+    } else if (e.key === 'c' && e.altKey) {
+        HolidayThemeSystem.apply('christmas');
+    } else if (e.key === 'h' && e.altKey) {
+        HolidayThemeSystem.apply('halloween');
+    } else if (e.key === 'Escape') {
+        HolidayThemeSystem.clear();
+    }
+});
+
+// 修改初始化函数
+const originalInit47 = init;
+init = function() {
+    originalInit47();
+    VoiceSystem.init();
+    console.log('🎤 迭代47功能已加载: 语音交互 | 节日主题');
+    console.log('⌨️ 新快捷键: Alt+V 语音 | Alt+S 春节 | Alt+C 圣诞 | Alt+H 万圣 | Esc 清除');
+};

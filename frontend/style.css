@@ -489,3 +489,24 @@ footer {
 .seat-indicator.free {
     background: var(--text-secondary);
 }
+
+/* 节日动画效果 */
+@keyframes bounce {
+    0%, 100% {(0); }
+ transform: translateY    50% { transform: translateY(-10px); }
+}
+
+@keyframes snowfall {
+    0% { background-position: 0 0; }
+    100% { background-position: 100% 100%; }
+}
+
+#voice-btn.listening {
+    animation: pulse 1s infinite;
+    background: #ff004d;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
