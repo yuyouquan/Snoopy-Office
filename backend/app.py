@@ -1215,9 +1215,84 @@ def health():
     """Health check"""
     return jsonify({
         "status": "ok",
-        "service": "star-office-ui",
+        "service": "snoopy-crawfish-office",
         "timestamp": datetime.now().isoformat(),
     })
+
+
+# ─── Mood System ───
+MOOD_FILE = os.path.join(ROOT_DIR, "mood-state.json")
+
+@app.route("/mood", methods=["GET"])
+def get_mood():
+    """Get current mood state"""
+    if os.path.exists(MOOD_FILE):
+        try:
+            with open(MOOD_FILE, "r", encoding="utf-8") as f:
+                return jsonify(json.load(f))
+        except Exception:
+            pass
+    return jsonify({"mood": None, "label": None})
+
+@app.route("/mood", methods=["POST"])
+def set_mood():
+    """Set current mood"""
+    data = request.get_json(silent=True)
+    if not data or "mood" not in data:
+        return jsonify({"ok": False, "msg": "Missing mood field"}), 400
+    valid_moods = {"energetic", "happy", "focused", "tired", "creative", "chill"}
+    mood = data["mood"]
+    if mood not in valid_moods:
+        return jsonify({"ok": False, "msg": f"Invalid mood: {mood}"}), 400
+    mood_data = {
+        "mood": mood,
+        "label": data.get("label", mood),
+        "updated_at": datetime.now().isoformat()
+    }
+    try:
+        with open(MOOD_FILE, "w", encoding="utf-8") as f:
+            json.dump(mood_data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+    return jsonify({"ok": True, **mood_data})
+
+
+# ─── Pomodoro Stats ───
+POMODORO_STATS_FILE = os.path.join(ROOT_DIR, "pomodoro-stats.json")
+
+@app.route("/pomodoro/stats", methods=["GET"])
+def get_pomodoro_stats():
+    """Get pomodoro statistics"""
+    if os.path.exists(POMODORO_STATS_FILE):
+        try:
+            with open(POMODORO_STATS_FILE, "r", encoding="utf-8") as f:
+                return jsonify(json.load(f))
+        except Exception:
+            pass
+    return jsonify({"totalCompleted": 0, "totalMinutes": 0, "history": []})
+
+@app.route("/pomodoro/stats", methods=["POST"])
+def update_pomodoro_stats():
+    """Update pomodoro statistics"""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"ok": False, "msg": "Missing data"}), 400
+    stats = {"totalCompleted": 0, "totalMinutes": 0, "history": []}
+    if os.path.exists(POMODORO_STATS_FILE):
+        try:
+            with open(POMODORO_STATS_FILE, "r", encoding="utf-8") as f:
+                stats = json.load(f)
+        except Exception:
+            pass
+    stats["totalCompleted"] = data.get("totalCompleted", stats.get("totalCompleted", 0))
+    stats["totalMinutes"] = data.get("totalMinutes", stats.get("totalMinutes", 0))
+    stats["updated_at"] = datetime.now().isoformat()
+    try:
+        with open(POMODORO_STATS_FILE, "w", encoding="utf-8") as f:
+            json.dump(stats, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+    return jsonify({"ok": True, **stats})
 
 
 @app.route("/yesterday-memo", methods=["GET"])

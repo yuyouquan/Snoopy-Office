@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Star 的像素办公室</title>
+    <title>Snoopy小龙虾的办公室</title>
     <style>
         @font-face {
             font-family: 'ArkPixel';
@@ -1133,7 +1133,7 @@
 <body>
     <!-- 加载遮罩 -->
     <div id="loading-overlay">
-        <div id="loading-text">Loading Star’s pixel office...</div>
+        <div id="loading-text">Loading Snoopy’s Crawfish Office...</div>
         <div id="loading-progress-container">
             <div id="loading-progress-bar"></div>
         </div>
@@ -1141,7 +1141,7 @@
     
     <div id="main-stage">
         <div id="game-container">
-            <div id="game-skeleton"><div class="hint">正在进入像素办公室…</div></div>
+            <div id="game-skeleton"><div class="hint">正在进入小龙虾办公室…</div></div>
             <div id="status-text">加载中...</div>
         </div>
     
@@ -1160,7 +1160,7 @@
         
         <!-- 状态控制栏 -->
         <div id="control-bar">
-            <div id="control-bar-title">Star 状态</div>
+            <div id="control-bar-title">Snoopy 状态</div>
             <div id="control-buttons">
                 <button id="btn-state-idle" onclick="setState('idle','待命')">待命</button>
                 <button id="btn-state-writing" onclick="setState('writing','工作中')">工作</button>
@@ -1170,12 +1170,56 @@
             </div>
         </div>
 
-        <!-- Guest Agent 名单面板（右下角） -->
+        <!-- Guest Agent 名单面板 -->
         <div id="guest-agent-panel">
             <div id="guest-agent-panel-title">访 客 列 表</div>
             <div id="guest-agent-list">
                 <div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">正在加载访客...</div>
             </div>
+            </div>
+        </div>
+
+        <!-- 第二行面板 -->
+        <div id="bottom-panels-row2" style="display:flex;gap:20px;width:1280px;max-width:none;margin-top:20px;">
+            <!-- 番茄钟面板 -->
+            <div id="pomodoro-panel" style="width:420px;height:260px;background:#141722;border:4px solid #0e1119;padding:14px;display:flex;flex-direction:column;gap:10px;position:relative;">
+                <div style="color:#ff6b6b;font-size:16px;font-weight:bold;text-align:center;letter-spacing:1px;">番 茄 工 作 法</div>
+                <div id="pomodoro-timer" style="font-size:48px;color:#ffd700;text-align:center;font-family:'ArkPixel',monospace;letter-spacing:4px;">25:00</div>
+                <div id="pomodoro-status" style="color:#9ca3af;font-size:12px;text-align:center;">准备开始</div>
+                <div id="pomodoro-progress" style="display:flex;gap:6px;justify-content:center;margin-top:4px;">
+                    <span class="pomo-dot" style="width:12px;height:12px;border-radius:50%;border:2px solid #555;display:inline-block;"></span>
+                    <span class="pomo-dot" style="width:12px;height:12px;border-radius:50%;border:2px solid #555;display:inline-block;"></span>
+                    <span class="pomo-dot" style="width:12px;height:12px;border-radius:50%;border:2px solid #555;display:inline-block;"></span>
+                    <span class="pomo-dot" style="width:12px;height:12px;border-radius:50%;border:2px solid #555;display:inline-block;"></span>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:center;margin-top:auto;">
+                    <button id="pomo-start-btn" onclick="pomodoroStart()" style="background:#e94560;color:#fff;border:2px solid #ff6b6b;border-radius:4px;padding:8px 20px;cursor:pointer;font-family:'ArkPixel',monospace;font-size:13px;">开始</button>
+                    <button id="pomo-pause-btn" onclick="pomodoroPause()" style="background:#3a3f4f;color:#fff;border:2px solid #555;border-radius:4px;padding:8px 20px;cursor:pointer;font-family:'ArkPixel',monospace;font-size:13px;" disabled>暂停</button>
+                    <button id="pomo-reset-btn" onclick="pomodoroReset()" style="background:#3a3f4f;color:#fff;border:2px solid #555;border-radius:4px;padding:8px 20px;cursor:pointer;font-family:'ArkPixel',monospace;font-size:13px;">重置</button>
+                </div>
+            </div>
+
+            <!-- 心情面板 -->
+            <div id="mood-panel" style="width:420px;height:260px;background:#141722;border:4px solid #0e1119;padding:14px;display:flex;flex-direction:column;gap:8px;position:relative;">
+                <div style="color:#a78bfa;font-size:16px;font-weight:bold;text-align:center;letter-spacing:1px;">今 日 心 情</div>
+                <div id="mood-display" style="font-size:52px;text-align:center;margin:4px 0;"></div>
+                <div id="mood-label" style="color:#d1d5db;font-size:14px;text-align:center;">选择你的心情</div>
+                <div id="mood-selector" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:auto;">
+                    <button onclick="setMood('energetic','精力充沛')" style="font-size:24px;background:transparent;border:2px solid #333;border-radius:8px;padding:6px 10px;cursor:pointer;" title="精力充沛">🦞</button>
+                    <button onclick="setMood('happy','开心')" style="font-size:24px;background:transparent;border:2px solid #333;border-radius:8px;padding:6px 10px;cursor:pointer;" title="开心">😊</button>
+                    <button onclick="setMood('focused','专注')" style="font-size:24px;background:transparent;border:2px solid #333;border-radius:8px;padding:6px 10px;cursor:pointer;" title="专注">🔥</button>
+                    <button onclick="setMood('tired','疲惫')" style="font-size:24px;background:transparent;border:2px solid #333;border-radius:8px;padding:6px 10px;cursor:pointer;" title="疲惫">😪</button>
+                    <button onclick="setMood('creative','灵感爆发')" style="font-size:24px;background:transparent;border:2px solid #333;border-radius:8px;padding:6px 10px;cursor:pointer;" title="灵感爆发">💡</button>
+                    <button onclick="setMood('chill','摸鱼中')" style="font-size:24px;background:transparent;border:2px solid #333;border-radius:8px;padding:6px 10px;cursor:pointer;" title="摸鱼中">🐟</button>
+                </div>
+            </div>
+
+            <!-- 成就面板 -->
+            <div id="achievement-panel" style="width:420px;height:260px;background:#141722;border:4px solid #0e1119;padding:14px;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;">
+                <div style="color:#fbbf24;font-size:16px;font-weight:bold;text-align:center;letter-spacing:1px;">成 就 徽 章</div>
+                <div id="achievement-stats" style="color:#9ca3af;font-size:11px;text-align:center;"></div>
+                <div id="achievement-list" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;overflow-y:auto;flex:1;padding:4px;">
+                </div>
             </div>
         </div>
     </div>
@@ -1293,7 +1337,7 @@
         let uiLang = localStorage.getItem('uiLang') || 'en';
         const I18N = {
             zh: {
-                controlTitle: 'Star 状态',
+                controlTitle: 'Snoopy 状态',
                 btnIdle: '待命', btnWork: '工作', btnSync: '同步', btnError: '报警', btnDecor: '装修房间',
                 drawerTitle: '装修房间 · 资产侧边栏', drawerClose: '关闭',
                 authTitle: '请输入装修验证码', authPlaceholder: '输入验证码', authVerify: '验证', authDefaultPassHint: '默认密码：1234（可随时让我帮你改，建议改成强密码）',
@@ -1317,7 +1361,7 @@
                 assetHintNotInScene: '当前场景未检测到此对象，仍可替换文件（刷新后生效）',
                 assetHintDefault: '通用素材：建议保持原图尺寸、透明通道与视觉重心一致，避免错位或失真',
                 showCoords: '显示坐标', hideCoords: '隐藏坐标', moveView: '移动视野', lockView: '锁定视野',
-                memoTitle: '昨 日 小 记', guestTitle: '访 客 列 表', officeTitle: '海辛小龙虾的办公室',
+                memoTitle: '昨 日 小 记', guestTitle: '访 客 列 表', officeTitle: 'Snoopy小龙虾的办公室',
                 loadingOffice: '正在加载 Star 的像素办公室...'
             },
             en: {
@@ -1345,11 +1389,11 @@
                 assetHintNotInScene: 'This object is not detected in current scene; you can still replace file (effective after refresh)',
                 assetHintDefault: 'Generic asset: keep source size, alpha channel, and visual anchor to avoid drift/distortion',
                 showCoords: 'Show Coords', hideCoords: 'Hide Coords', moveView: 'Pan View', lockView: 'Lock View',
-                memoTitle: 'YESTERDAY NOTES', guestTitle: 'VISITOR LIST', officeTitle: 'Haixin Lobster Office',
-                loadingOffice: 'Loading Star’s pixel office...'
+                memoTitle: ‘YESTERDAY NOTES’, guestTitle: ‘VISITOR LIST’, officeTitle: "Snoopy’s Crawfish Office",
+                loadingOffice: "Loading Snoopy’s Crawfish Office..."
             },
             ja: {
-                controlTitle: 'Star ステータス',
+                controlTitle: ‘Snoopy ステータス’,
                 btnIdle: '待機', btnWork: '作業', btnSync: '同期', btnError: '警報', btnDecor: '部屋を編集',
                 drawerTitle: '部屋編集・アセットサイドバー', drawerClose: '閉じる',
                 authTitle: '編集パスコードを入力', authPlaceholder: 'パスコード入力', authVerify: '認証', authDefaultPassHint: '初期パスコード：1234（いつでも変更を相談可。強固なパス推奨）',
@@ -1373,7 +1417,7 @@
                 assetHintNotInScene: '現在のシーンでこのオブジェクトは未検出です。ファイル差し替えは可能（更新後に反映）',
                 assetHintDefault: '汎用素材：元サイズ・透過・視覚アンカーを維持し、ズレや崩れを防いでください',
                 showCoords: '座標表示', hideCoords: '座標非表示', moveView: '視点移動', lockView: '視点固定',
-                memoTitle: '昨日のメモ', guestTitle: '訪問者リスト', officeTitle: 'ハイシン・ロブスターのオフィス',
+                memoTitle: '昨日のメモ', guestTitle: '訪問者リスト', officeTitle: 'Snoopyザリガニオフィス',
                 loadingOffice: 'Star のピクセルオフィスを読み込み中...'
             }
         };
@@ -1622,13 +1666,13 @@
 
         const BUBBLE_TEXTS = {
             zh: {
-                idle: ['待命中：耳朵竖起来了','我在这儿，随时可以开工','先把桌面收拾干净再说','呼——给大脑放个风','今天也要优雅地高效','等待，是为了更准确的一击','咖啡还热，灵感也还在','我在后台给你加 Buff','状态：静心 / 充电','小猫说：慢一点也没关系'],
-                writing: ['进入专注模式：勿扰','先把关键路径跑通','我来把复杂变简单','把 bug 关进笼子里','写到一半，先保存','把每一步都做成可回滚','今天的进度，明天的底气','先收敛，再发散','让系统变得更可解释','稳住，我们能赢'],
-                researching: ['我在挖证据链','让我把信息熬成结论','找到了：关键在这里','先把变量控制住','我在查：它为什么会这样','把直觉写成验证','先定位，再优化','别急，先画因果图'],
-                executing: ['执行中：不要眨眼','把任务切成小块逐个击破','开始跑 pipeline','一键推进：走你','让结果自己说话','先做最小可行，再做最美版本'],
+                idle: ['待命中：钳子已就位','我在这儿，随时可以开工','先把桌面收拾干净再说','呼——给大脑泡个温泉','今天也要优雅地高效','等待，是为了更准确的一夹','咖啡还热，灵感也还在','小龙虾在后台给你加 Buff','状态：养精蓄锐','虾生哲学：慢一点也没关系'],
+                writing: ['进入专注模式：勿扰','先把关键路径跑通','用钳子把复杂夹成简单','把 bug 关进虾笼里','写到一半，先保存','每一步都做成可回滚','今天的进度，明天的底气','先收敛，再发散','代码像虾一样鲜美','稳住，我们能赢'],
+                researching: ['我在水底挖证据链','让我把信息熬成结论','找到了：关键在这里','先把变量控制住','小龙虾在查：它为什么会这样','把直觉写成验证','先定位，再优化','别急，先画因果图'],
+                executing: ['执行中：不要眨眼','用钳子逐个击破任务','开始跑 pipeline','一键推进：走你','让结果自己说话','先做最小可行，再做最美版本'],
                 syncing: ['同步中：把今天锁进云里','备份不是仪式，是安全感','写入中…别断电','把变更交给时间戳','云端对齐：咔哒','同步完成前先别乱动','把未来的自己从灾难里救出来','多一份备份，少一份后悔'],
-                error: ['警报响了：先别慌','我闻到 bug 的味道了','先复现，再谈修复','把日志给我，我会说人话','错误不是敌人，是线索','把影响面圈起来','先止血，再手术','我在：马上定位根因','别怕，这种我见多了','报警中：让问题自己现形'],
-                cat: ['喵~','咕噜咕噜…','尾巴摇一摇','晒太阳最开心','有人来看我啦','我是这个办公室的吉祥物','伸个懒腰','今天的罐罐准备好了吗','呼噜呼噜','这个位置视野最好']
+                error: ['警报响了：先别慌','我闻到 bug 的味道了','先复现，再谈修复','把日志给我，虾会说人话','错误不是敌人，是线索','把影响面圈起来','先止血，再手术','马上定位根因','别怕，这种虾见多了','报警中：让问题自己现形'],
+                cat: ['喵~','咕噜咕噜…','尾巴摇一摇','晒太阳最开心','有人来看我啦','我是这个办公室的吉祥物','伸个懒腰','今天的罐罐准备好了吗','呼噜呼噜','和小龙虾做邻居真好']
             },
             en: {
                 idle: ['On standby: ears up.','I’m here, ready to roll.','Let’s tidy the desk first.','Taking a quick brain breeze.','Efficient and elegant, as always.','Waiting for a more precise strike.','Coffee is warm, ideas too.','Giving you a quiet backstage buff.','Status: calm / charging.','Cat says: no rush, we’re good.'],
@@ -4673,7 +4717,12 @@ function toggleBrokerPanel() {
                         // 不论 changed 与否，都按服务端最新状态强制一次视觉同步，避免动画卡旧状态
                         pendingDesiredState = null;
                         if (currentState !== nextState) {
+                            const prevState = currentState;
                             currentState = nextState;
+                            // Track state change for achievements
+                            if (typeof trackStateChange === 'function') {
+                                trackStateChange(nextState, prevState);
+                            }
                         }
                         applyVisualState(nextState);
 
@@ -4877,5 +4926,8 @@ function toggleBrokerPanel() {
         // 启动游戏
         initGame();
     </script>
+    <script src="/static/pomodoro.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/mood.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/achievements.js?v={{VERSION_TIMESTAMP}}"></script>
 </body>
 </html>

@@ -82,7 +82,7 @@ function updateLoadingProgress() {
     loadingProgressBar.style.width = percent + '%';
   }
   if (loadingText) {
-    loadingText.textContent = `正在加载 Star 的像素办公室... ${percent}%`;
+    loadingText.textContent = `正在加载 Snoopy 的小龙虾办公室... ${percent}%`;
   }
 }
 
@@ -110,42 +110,42 @@ const STATES = {
 
 const BUBBLE_TEXTS = {
   idle: [
-    '待命中：耳朵竖起来了',
+    '待命中：钳子已就位',
     '我在这儿，随时可以开工',
     '先把桌面收拾干净再说',
-    '呼——给大脑放个风',
+    '呼——给大脑泡个温泉',
     '今天也要优雅地高效',
-    '等待，是为了更准确的一击',
+    '等待，是为了更准确的一夹',
     '咖啡还热，灵感也还在',
-    '我在后台给你加 Buff',
-    '状态：静心 / 充电',
-    '小猫说：慢一点也没关系'
+    '小龙虾在后台给你加 Buff',
+    '状态：养精蓄锐',
+    '虾生哲学：慢一点也没关系'
   ],
   writing: [
     '进入专注模式：勿扰',
     '先把关键路径跑通',
-    '我来把复杂变简单',
-    '把 bug 关进笼子里',
+    '用钳子把复杂夹成简单',
+    '把 bug 关进虾笼里',
     '写到一半，先保存',
-    '把每一步都做成可回滚',
+    '每一步都做成可回滚',
     '今天的进度，明天的底气',
     '先收敛，再发散',
-    '让系统变得更可解释',
+    '代码像虾一样鲜美',
     '稳住，我们能赢'
   ],
   researching: [
-    '我在挖证据链',
+    '我在水底挖证据链',
     '让我把信息熬成结论',
     '找到了：关键在这里',
     '先把变量控制住',
-    '我在查：它为什么会这样',
+    '小龙虾在查：它为什么会这样',
     '把直觉写成验证',
     '先定位，再优化',
     '别急，先画因果图'
   ],
   executing: [
     '执行中：不要眨眼',
-    '把任务切成小块逐个击破',
+    '用钳子逐个击破任务',
     '开始跑 pipeline',
     '一键推进：走你',
     '让结果自己说话',
@@ -165,12 +165,12 @@ const BUBBLE_TEXTS = {
     '警报响了：先别慌',
     '我闻到 bug 的味道了',
     '先复现，再谈修复',
-    '把日志给我，我会说人话',
+    '把日志给我，虾会说人话',
     '错误不是敌人，是线索',
     '把影响面圈起来',
     '先止血，再手术',
-    '我在：马上定位根因',
-    '别怕，这种我见多了',
+    '马上定位根因',
+    '别怕，这种虾见多了',
     '报警中：让问题自己现形'
   ],
   cat: [
@@ -183,7 +183,7 @@ const BUBBLE_TEXTS = {
     '伸个懒腰',
     '今天的罐罐准备好了吗',
     '呼噜呼噜',
-    '这个位置视野最好'
+    '和小龙虾做邻居真好'
   ]
 };
 
@@ -374,7 +374,7 @@ function create() {
   const plaqueY = LAYOUT.plaque.y;
   const plaqueBg = game.add.rectangle(plaqueX, plaqueY, LAYOUT.plaque.width, LAYOUT.plaque.height, 0x5d4037);
   plaqueBg.setStrokeStyle(3, 0x3e2723);
-  const plaqueText = game.add.text(plaqueX, plaqueY, '海辛小龙虾的办公室', {
+  const plaqueText = game.add.text(plaqueX, plaqueY, 'Snoopy小龙虾的办公室', {
     fontFamily: 'ArkPixel, monospace',
     fontSize: '18px',
     fill: '#ffd700',
