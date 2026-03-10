@@ -1375,7 +1375,7 @@
                 assetHintDefault: '通用素材：建议保持原图尺寸、透明通道与视觉重心一致，避免错位或失真',
                 showCoords: '显示坐标', hideCoords: '隐藏坐标', moveView: '移动视野', lockView: '锁定视野',
                 memoTitle: '昨 日 小 记', guestTitle: '访 客 列 表', officeTitle: 'Snoopy小龙虾的办公室',
-                loadingOffice: '正在加载 Star 的像素办公室...'
+                loadingOffice: '正在加载 Snoopy 的小龙虾办公室...'
             },
             en: {
                 controlTitle: 'Star Status',
@@ -1431,7 +1431,7 @@
                 assetHintDefault: '汎用素材：元サイズ・透過・視覚アンカーを維持し、ズレや崩れを防いでください',
                 showCoords: '座標表示', hideCoords: '座標非表示', moveView: '視点移動', lockView: '視点固定',
                 memoTitle: '昨日のメモ', guestTitle: '訪問者リスト', officeTitle: 'Snoopyザリガニオフィス',
-                loadingOffice: 'Star のピクセルオフィスを読み込み中...'
+                loadingOffice: 'Snoopy のザリガニオフィスを読み込み中...'
             }
         };
 
@@ -4018,17 +4018,32 @@ function toggleBrokerPanel() {
             loadingProgressContainer = document.getElementById('loading-progress-container');
             
             // 设置资源总数（全部首屏加载：装饰也第一时间出现）
-            totalAssets = 15;
+            totalAssets = 24;
             loadedAssets = 0;
             
             // 加载进度监听
-            this.load.on('filecomplete', () => {
+            this.load.on('filecomplete', (key) => {
                 updateLoadingProgress();
+                console.log('[preload] loaded:', key, `(${loadedAssets}/${totalAssets})`);
             });
-            
+
+            this.load.on('loaderror', (file) => {
+                console.error('[preload] FAILED to load:', file.key, file.url);
+                updateLoadingProgress(); // count it anyway so progress doesn't stall
+            });
+
             this.load.on('complete', () => {
+                console.log('[preload] all assets loaded, hiding overlay');
                 hideLoadingOverlay();
             });
+
+            // Failsafe: force-hide loading overlay after 15s even if Phaser stalls
+            setTimeout(() => {
+                if (loadingOverlay && loadingOverlay.style.display !== 'none') {
+                    console.warn('[preload] failsafe: force hiding loading overlay after 15s');
+                    hideLoadingOverlay();
+                }
+            }, 15000);
 
             // cache-busting to avoid stale background on client/CDN
             // use smaller/new map version provided by user
