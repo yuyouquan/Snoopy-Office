@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Star Office UI - Backend State Service"""
+"""Snoopy Crawfish Office - Backend State Service"""
 
 from flask import Flask, jsonify, send_from_directory, make_response, request, session
 from datetime import datetime, timedelta
@@ -14,6 +14,7 @@ import tempfile
 import threading
 from pathlib import Path
 from security_utils import is_production_mode, is_strong_secret, is_strong_drawer_pass
+from openclaw_bridge import get_full_status, infer_office_state, get_cron_jobs, get_recent_cron_runs, get_active_sessions
 from memo_utils import get_yesterday_date_str, sanitize_content, extract_memo_from_file
 from store_utils import (
     load_agents_state as _store_load_agents_state,
@@ -195,6 +196,34 @@ def load_state():
                     pass
     except Exception:
         pass
+
+    # OpenClaw auto-sync: if state hasn't been manually set recently,
+    # use OpenClaw status to drive the office state
+    try:
+        updated_at = state.get("updated_at", "")
+        source = state.get("source", "manual")
+        age_seconds = 999
+        if updated_at:
+            try:
+                dt = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+                if dt.tzinfo:
+                    from datetime import timezone
+                    age_seconds = (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds()
+                else:
+                    age_seconds = (datetime.now() - dt).total_seconds()
+            except Exception:
+                pass
+
+        # Only auto-sync if the state is idle or was auto-set (not manually set within 30s)
+        if state.get("state") == "idle" or (source == "openclaw" and age_seconds > 5):
+            oc_state = infer_office_state()
+            if oc_state and oc_state.get("state") != "idle":
+                state["state"] = oc_state["state"]
+                state["detail"] = oc_state.get("detail", "")
+                state["source"] = "openclaw"
+                state["updated_at"] = datetime.now().isoformat()
+    except Exception:
+        pass  # OpenClaw bridge errors should never break the office
 
     return state
 
@@ -1218,6 +1247,46 @@ def health():
         "service": "snoopy-crawfish-office",
         "timestamp": datetime.now().isoformat(),
     })
+
+
+# ─── OpenClaw Integration ───
+
+@app.route("/openclaw/status", methods=["GET"])
+def openclaw_status():
+    """获取 OpenClaw 完整状态"""
+    try:
+        status = get_full_status()
+        return jsonify({"ok": True, **status})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/openclaw/state", methods=["GET"])
+def openclaw_state():
+    """获取推断的办公室状态（轻量级，供轮询）"""
+    try:
+        state = infer_office_state()
+        return jsonify({"ok": True, **state})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/openclaw/cron", methods=["GET"])
+def openclaw_cron():
+    """获取 cron 任务列表"""
+    try:
+        jobs = get_cron_jobs()
+        runs = get_recent_cron_runs(10)
+        return jsonify({"ok": True, "jobs": jobs, "recentRuns": runs})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/openclaw/agents", methods=["GET"])
+def openclaw_agents():
+    """获取 OpenClaw agent 活跃状态"""
+    try:
+        agents = get_active_sessions()
+        return jsonify({"ok": True, "agents": agents})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 # ─── Mood System ───

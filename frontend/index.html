@@ -1222,6 +1222,19 @@
                 </div>
             </div>
         </div>
+
+        <!-- 第三行: OpenClaw 状态面板 -->
+        <div id="bottom-panels-row3" style="display:flex;gap:20px;width:1280px;max-width:none;margin-top:20px;">
+            <div id="openclaw-panel" style="width:1280px;background:#141722;border:4px solid #0e1119;padding:14px;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="color:#06b6d4;font-size:16px;font-weight:bold;letter-spacing:1px;">OpenClaw 控 制 台</span>
+                    <span id="openclaw-conn-dot" style="width:8px;height:8px;border-radius:50%;background:#555;display:inline-block;"></span>
+                </div>
+                <div id="openclaw-dashboard" style="display:flex;flex-direction:column;gap:4px;min-height:60px;">
+                    <div style="color:#9ca3af;font-size:12px;text-align:center;padding:10px 0;">正在连接 OpenClaw...</div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div id="asset-highlight"></div>
@@ -4929,5 +4942,6 @@ function toggleBrokerPanel() {
     <script src="/static/pomodoro.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/mood.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/achievements.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/openclaw-panel.js?v={{VERSION_TIMESTAMP}}"></script>
 </body>
 </html>
