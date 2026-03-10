@@ -65,20 +65,61 @@ def get_cron_jobs():
         if next_run_ms > 0:
             next_run_at = datetime.fromtimestamp(next_run_ms / 1000).isoformat()
 
+        # 提取任务描述（payload.message 前80字符）
+        payload = job.get("payload", {})
+        message = (payload.get("message", "") or "")[:120]
+
         jobs.append({
             "id": job.get("id", ""),
             "name": job.get("name", "未命名任务"),
             "enabled": job.get("enabled", False),
             "schedule": job.get("schedule", {}).get("expr", ""),
+            "scheduleTz": job.get("schedule", {}).get("tz", ""),
             "agentId": job.get("agentId", "main"),
             "lastStatus": last_status,
             "lastRunAt": last_run_at,
             "nextRunAt": next_run_at,
             "lastDurationMs": last_duration_ms,
             "consecutiveErrors": state.get("consecutiveErrors", 0),
+            "lastError": (state.get("lastError", "") or "")[:200],
+            "description": message,
         })
 
     return jobs
+
+
+def get_job_run_history(job_id, limit=20):
+    """获取指定任务的执行历史"""
+    run_file = os.path.join(CRON_RUNS_DIR, f"{job_id}.jsonl")
+    runs = []
+    if not os.path.isfile(run_file):
+        return runs
+
+    try:
+        with open(run_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    if entry.get("action") == "finished":
+                        runs.append({
+                            "status": entry.get("status", "unknown"),
+                            "summary": (entry.get("summary", "") or "")[:500],
+                            "error": (entry.get("error", "") or "")[:200],
+                            "durationMs": entry.get("durationMs", 0),
+                            "timestamp": datetime.fromtimestamp(
+                                entry.get("ts", 0) / 1000
+                            ).isoformat() if entry.get("ts") else None,
+                        })
+                except json.JSONDecodeError:
+                    continue
+    except Exception:
+        pass
+
+    runs.sort(key=lambda r: r.get("timestamp", ""), reverse=True)
+    return runs[:limit]
 
 
 def get_recent_cron_runs(limit=10):

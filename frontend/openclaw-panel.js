@@ -16,6 +16,7 @@ async function fetchOpenClawStatus() {
       openclawData = data;
       renderOpenClawPanel(data);
       renderAgentGrid(data.agentDetails || []);
+      if (typeof renderCronPanel === 'function') renderCronPanel(data);
       const dot = document.getElementById('openclaw-conn-dot');
       if (dot) dot.style.background = '#22c55e';
     }
@@ -129,7 +130,7 @@ function renderAgentCard(agent) {
     ? `width:8px;height:8px;border-radius:50%;background:${color};box-shadow:0 0 6px ${color};animation:ocPulse 1.5s infinite;`
     : `width:8px;height:8px;border-radius:50%;background:${color};`;
 
-  let html = `<div class="agent-card" style="background:${bgColor};border:1px solid ${borderColor}33;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;transition:border-color 0.2s;" onmouseenter="this.style.borderColor='${borderColor}88'" onmouseleave="this.style.borderColor='${borderColor}33'">`;
+  let html = `<div class="agent-card" style="background:${bgColor};border:1px solid ${borderColor}33;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;transition:border-color 0.2s;min-width:160px;max-width:200px;flex-shrink:0;overflow:hidden;" onmouseenter="this.style.borderColor='${borderColor}88'" onmouseleave="this.style.borderColor='${borderColor}33'">`;
 
   // Header: emoji + name + status dot
   html += `<div style="display:flex;align-items:center;gap:6px;">`;
@@ -180,20 +181,34 @@ function renderAgentGrid(agentDetails) {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.4; }
       }
+      #agent-grid::-webkit-scrollbar { height: 6px; }
+      #agent-grid::-webkit-scrollbar-track { background: transparent; }
+      #agent-grid::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+      #agent-grid::-webkit-scrollbar-thumb:hover { background: #555; }
     `;
     document.head.appendChild(style);
   }
 
-  // Section title
-  let html = `<div style="grid-column:1/-1;color:#9ca3af;font-size:11px;display:flex;align-items:center;gap:6px;">`;
-  html += `<span>🤖 团队角色状态</span>`;
+  // Section title (placed before the scroll container)
+  let titleEl = document.getElementById('agent-grid-title');
   const activeCount = agentDetails.filter(a => a.status === 'active').length;
   const idleCount = agentDetails.filter(a => a.status === 'idle').length;
-  html += `<span style="color:#22c55e;font-size:10px;">${activeCount} 活跃</span>`;
-  html += `<span style="color:#eab308;font-size:10px;">${idleCount} 待命</span>`;
-  html += `<span style="color:#6b7280;font-size:10px;">${agentDetails.length - activeCount - idleCount} 离线</span>`;
-  html += `</div>`;
+  const offlineCount = agentDetails.length - activeCount - idleCount;
+  const titleHtml = `<span>🤖 团队角色状态</span>` +
+    `<span style="color:#22c55e;font-size:10px;">${activeCount} 活跃</span>` +
+    `<span style="color:#eab308;font-size:10px;">${idleCount} 待命</span>` +
+    `<span style="color:#6b7280;font-size:10px;">${offlineCount} 离线</span>`;
 
+  if (!titleEl) {
+    titleEl = document.createElement('div');
+    titleEl.id = 'agent-grid-title';
+    titleEl.style.cssText = 'color:#9ca3af;font-size:11px;display:flex;align-items:center;gap:6px;margin-top:10px;';
+    container.parentNode.insertBefore(titleEl, container);
+  }
+  titleEl.innerHTML = titleHtml;
+
+  // Agent cards
+  let html = '';
   for (const agent of agentDetails) {
     html += renderAgentCard(agent);
   }

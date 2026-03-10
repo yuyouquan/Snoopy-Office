@@ -14,7 +14,7 @@ import tempfile
 import threading
 from pathlib import Path
 from security_utils import is_production_mode, is_strong_secret, is_strong_drawer_pass
-from openclaw_bridge import get_full_status, infer_office_state, get_cron_jobs, get_recent_cron_runs, get_active_sessions
+from openclaw_bridge import get_full_status, infer_office_state, get_cron_jobs, get_recent_cron_runs, get_active_sessions, get_job_run_history
 from memo_utils import get_yesterday_date_str, sanitize_content, extract_memo_from_file
 from store_utils import (
     load_agents_state as _store_load_agents_state,
@@ -1276,6 +1276,15 @@ def openclaw_cron():
         jobs = get_cron_jobs()
         runs = get_recent_cron_runs(10)
         return jsonify({"ok": True, "jobs": jobs, "recentRuns": runs})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/openclaw/cron/<job_id>/runs", methods=["GET"])
+def openclaw_cron_runs(job_id):
+    """获取指定 cron 任务的执行历史"""
+    try:
+        runs = get_job_run_history(job_id, limit=20)
+        return jsonify({"ok": True, "jobId": job_id, "runs": runs})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
