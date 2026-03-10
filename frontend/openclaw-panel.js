@@ -1,9 +1,12 @@
 // Snoopy小龙虾办公室 - OpenClaw 实时状态面板
 // 轮询 /openclaw/status 端点，显示 Agent 和 Cron 任务状态
 
-const OPENCLAW_POLL_INTERVAL = 5000; // 5秒轮询
+const OPENCLAW_POLL_INTERVAL = 5000;
 let openclawData = null;
 let openclawPollTimer = null;
+
+const AGENT_STATUS_COLORS = { active: '#22c55e', idle: '#eab308', offline: '#6b7280' };
+const AGENT_STATUS_LABELS = { active: '活跃', idle: '待命', offline: '离线' };
 
 async function fetchOpenClawStatus() {
   try {
@@ -12,9 +15,14 @@ async function fetchOpenClawStatus() {
     if (data.ok) {
       openclawData = data;
       renderOpenClawPanel(data);
+      renderAgentGrid(data.agentDetails || []);
+      const dot = document.getElementById('openclaw-conn-dot');
+      if (dot) dot.style.background = '#22c55e';
     }
   } catch (e) {
     console.error('OpenClaw status fetch failed:', e);
+    const dot = document.getElementById('openclaw-conn-dot');
+    if (dot) dot.style.background = '#ef4444';
   }
 }
 
@@ -26,16 +34,10 @@ function renderOpenClawPanel(data) {
   const officeState = data.officeState || {};
   const cronJobs = data.cronJobs || [];
   const recentRuns = data.recentRuns || [];
-  const agents = data.agents || [];
 
-  // State indicator color
   const stateColors = {
-    idle: '#22c55e',
-    writing: '#3b82f6',
-    executing: '#f59e0b',
-    error: '#ef4444',
-    syncing: '#8b5cf6',
-    researching: '#06b6d4'
+    idle: '#22c55e', writing: '#3b82f6', executing: '#f59e0b',
+    error: '#ef4444', syncing: '#8b5cf6', researching: '#06b6d4'
   };
   const stateColor = stateColors[officeState.state] || '#9ca3af';
   const stateEmojis = {
@@ -44,7 +46,6 @@ function renderOpenClawPanel(data) {
   };
   const stateEmoji = stateEmojis[officeState.state] || '❓';
 
-  // Build HTML
   let html = '';
 
   // Status header
@@ -68,7 +69,7 @@ function renderOpenClawPanel(data) {
     html += `<div style="display:flex;flex-direction:column;gap:3px;max-height:90px;overflow-y:auto;">`;
     for (const run of recentRuns.slice(0, 5)) {
       const statusIcon = run.status === 'ok' ? '✅' : '❌';
-      const jobName = findJobName(cronJobs, run.jobId);
+      const jobName = findJobName(data.cronJobs || [], run.jobId);
       const timeStr = run.timestamp ? formatTime(run.timestamp) : '';
       const durationStr = run.durationMs ? `${Math.round(run.durationMs / 1000)}s` : '';
       html += `<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:#d1d5db;">`;
@@ -81,19 +82,8 @@ function renderOpenClawPanel(data) {
     html += `</div>`;
   }
 
-  // Active agents
-  const activeAgents = agents.filter(a => a.isActive);
-  if (activeAgents.length > 0) {
-    html += `<div style="color:#9ca3af;font-size:10px;margin-top:8px;margin-bottom:4px;">活跃 Agent</div>`;
-    html += `<div style="display:flex;gap:6px;flex-wrap:wrap;">`;
-    for (const agent of activeAgents) {
-      html += `<span style="background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:10px;">${agent.agentId} (${agent.recentSessions})</span>`;
-    }
-    html += `</div>`;
-  }
-
   // Upcoming jobs
-  const upcoming = cronJobs
+  const upcoming = (data.cronJobs || [])
     .filter(j => j.enabled && j.nextRunAt)
     .sort((a, b) => (a.nextRunAt || '').localeCompare(b.nextRunAt || ''))
     .slice(0, 3);
@@ -115,6 +105,104 @@ function renderOpenClawPanel(data) {
   container.innerHTML = html;
 }
 
+// ─── Agent Grid ───────────────────────────────────────────
+
+function formatTokenCount(n) {
+  if (!n || n <= 0) return '0';
+  if (n < 1000) return String(n);
+  if (n < 1000000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+}
+
+function renderAgentCard(agent) {
+  const color = AGENT_STATUS_COLORS[agent.status] || '#6b7280';
+  const label = AGENT_STATUS_LABELS[agent.status] || agent.status;
+  const isMain = agent.isOrchestrator;
+  const borderColor = isMain ? '#06b6d4' : color;
+  const bgColor = isMain ? 'rgba(6,182,212,0.06)' : 'rgba(255,255,255,0.03)';
+
+  const lastTime = agent.lastActivityAt ? formatTime(agent.lastActivityAt) : '从未';
+  const tokens = formatTokenCount(agent.totalInputTokens + agent.totalOutputTokens);
+
+  // Pulse animation for active status
+  const dotStyle = agent.status === 'active'
+    ? `width:8px;height:8px;border-radius:50%;background:${color};box-shadow:0 0 6px ${color};animation:ocPulse 1.5s infinite;`
+    : `width:8px;height:8px;border-radius:50%;background:${color};`;
+
+  let html = `<div class="agent-card" style="background:${bgColor};border:1px solid ${borderColor}33;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;transition:border-color 0.2s;" onmouseenter="this.style.borderColor='${borderColor}88'" onmouseleave="this.style.borderColor='${borderColor}33'">`;
+
+  // Header: emoji + name + status dot
+  html += `<div style="display:flex;align-items:center;gap:6px;">`;
+  html += `<span style="font-size:18px;">${agent.emoji}</span>`;
+  html += `<div style="flex:1;min-width:0;">`;
+  html += `<div style="color:#e5e7eb;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${agent.name}</div>`;
+  if (isMain) {
+    html += `<div style="color:#06b6d4;font-size:9px;letter-spacing:0.5px;">ORCHESTRATOR</div>`;
+  }
+  html += `</div>`;
+  html += `<div style="${dotStyle}" title="${label}"></div>`;
+  html += `</div>`;
+
+  // Role description
+  if (agent.role) {
+    html += `<div style="color:#9ca3af;font-size:10px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${agent.role}">${agent.role}</div>`;
+  }
+
+  // Stats row
+  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;">`;
+  html += `<span style="color:#6b7280;font-size:9px;" title="会话数">📂 ${agent.totalSessions}</span>`;
+  html += `<span style="color:#6b7280;font-size:9px;" title="Token 用量">🪙 ${tokens}</span>`;
+  html += `</div>`;
+
+  // Last active
+  html += `<div style="color:#4b5563;font-size:9px;border-top:1px solid rgba(255,255,255,0.05);padding-top:4px;">`;
+  html += `<span style="color:${color};">${label}</span> · ${lastTime}`;
+  html += `</div>`;
+
+  html += `</div>`;
+  return html;
+}
+
+function renderAgentGrid(agentDetails) {
+  const container = document.getElementById('agent-grid');
+  if (!container) return;
+  if (!agentDetails || agentDetails.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  // Inject pulse animation style once
+  if (!document.getElementById('oc-agent-styles')) {
+    const style = document.createElement('style');
+    style.id = 'oc-agent-styles';
+    style.textContent = `
+      @keyframes ocPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Section title
+  let html = `<div style="grid-column:1/-1;color:#9ca3af;font-size:11px;display:flex;align-items:center;gap:6px;">`;
+  html += `<span>🤖 团队角色状态</span>`;
+  const activeCount = agentDetails.filter(a => a.status === 'active').length;
+  const idleCount = agentDetails.filter(a => a.status === 'idle').length;
+  html += `<span style="color:#22c55e;font-size:10px;">${activeCount} 活跃</span>`;
+  html += `<span style="color:#eab308;font-size:10px;">${idleCount} 待命</span>`;
+  html += `<span style="color:#6b7280;font-size:10px;">${agentDetails.length - activeCount - idleCount} 离线</span>`;
+  html += `</div>`;
+
+  for (const agent of agentDetails) {
+    html += renderAgentCard(agent);
+  }
+
+  container.innerHTML = html;
+}
+
+// ─── Utilities ────────────────────────────────────────────
+
 function renderStatBadge(label, value, color) {
   return `<div style="background:rgba(0,0,0,0.3);border:1px solid ${color}33;border-radius:6px;padding:3px 8px;display:flex;align-items:center;gap:4px;">
     <span style="color:#9ca3af;font-size:10px;">${label}</span>
@@ -134,7 +222,6 @@ function formatTime(isoStr) {
     const diffMs = now - d;
 
     if (diffMs < 0) {
-      // Future time
       const mins = Math.round(-diffMs / 60000);
       if (mins < 60) return `${mins}分后`;
       const hours = Math.round(mins / 60);

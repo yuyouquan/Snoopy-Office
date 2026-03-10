@@ -265,6 +265,142 @@ def infer_office_state():
     }
 
 
+# 角色元数据: 显示名称、图标、简要描述
+AGENT_META = {
+    "main": {"name": "主控", "emoji": "🧠", "desc": "全局调度与任务编排"},
+    "product-manager": {"name": "产品经理", "emoji": "📋", "desc": "需求分析与产品规划"},
+    "project-manager": {"name": "项目经理", "emoji": "📊", "desc": "任务协调与进度跟踪"},
+    "architect": {"name": "架构师", "emoji": "🏗️", "desc": "技术方案与系统架构"},
+    "frontend-dev": {"name": "前端开发", "emoji": "🎨", "desc": "用户界面实现"},
+    "backend-dev": {"name": "后端开发", "emoji": "⚙️", "desc": "API 与业务逻辑"},
+    "qa-engineer": {"name": "测试工程", "emoji": "🧪", "desc": "质量保障与测试"},
+    "news-miner": {"name": "新闻挖掘", "emoji": "📰", "desc": "信息收集与分析"},
+    "daily-reporter": {"name": "日报助手", "emoji": "📝", "desc": "工作进展总结"},
+    "security-expert": {"name": "安全专家", "emoji": "🔒", "desc": "安全审计与防护"},
+}
+
+# ROLE.md 缓存 (进程生命周期内只读一次)
+_role_cache = {}
+ROLE_BASE_DIR = os.path.join(
+    OPENCLAW_DIR, "workspace", "multi-agent-team", "agents"
+)
+
+
+def _read_role_summary(agent_id):
+    """读取 agent 的 ROLE.md 摘要, 带缓存"""
+    if agent_id in _role_cache:
+        return _role_cache[agent_id]
+
+    role_file = os.path.join(ROLE_BASE_DIR, agent_id, "ROLE.md")
+    result = None
+    try:
+        with open(role_file, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        # 提取第一段非标题、非空行的内容
+        for line in lines:
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#") and not stripped.startswith("---"):
+                result = stripped[:120]
+                break
+    except Exception:
+        pass
+
+    _role_cache[agent_id] = result
+    return result
+
+
+def _parse_sessions_meta(agent_id):
+    """解析 agent 的 sessions.json 元数据"""
+    sessions_file = os.path.join(AGENTS_DIR, agent_id, "sessions", "sessions.json")
+    data = _safe_read_json(sessions_file)
+    if not data or not isinstance(data, dict):
+        return {"entries": 0, "lastActivityMs": 0, "totalInputTokens": 0, "totalOutputTokens": 0}
+
+    last_activity_ms = 0
+    total_input = 0
+    total_output = 0
+
+    for entry in data.values():
+        if not isinstance(entry, dict):
+            continue
+        updated = entry.get("updatedAt", 0)
+        if isinstance(updated, (int, float)) and updated > last_activity_ms:
+            last_activity_ms = updated
+        total_input += entry.get("inputTokens", 0) or 0
+        total_output += entry.get("outputTokens", 0) or 0
+
+    return {
+        "entries": len(data),
+        "lastActivityMs": last_activity_ms,
+        "totalInputTokens": total_input,
+        "totalOutputTokens": total_output,
+    }
+
+
+def get_agent_details():
+    """获取所有 agent 的详细状态"""
+    config = get_openclaw_config()
+    agent_ids = config["agents"] if config else list(AGENT_META.keys())
+
+    now_ms = time.time() * 1000
+    five_min_ms = 5 * 60 * 1000
+    one_hour_ms = 60 * 60 * 1000
+
+    details = []
+    for agent_id in agent_ids:
+        meta = AGENT_META.get(agent_id, {"name": agent_id, "emoji": "🤖", "desc": ""})
+        role_summary = _read_role_summary(agent_id) or meta["desc"]
+        session_meta = _parse_sessions_meta(agent_id)
+
+        # 计算 .jsonl session 文件数
+        sessions_dir = os.path.join(AGENTS_DIR, agent_id, "sessions")
+        total_sessions = 0
+        recent_sessions = 0
+        one_hour_ago = time.time() - 3600
+        try:
+            for f in os.listdir(sessions_dir):
+                if f.endswith(".jsonl"):
+                    total_sessions += 1
+                    fpath = os.path.join(sessions_dir, f)
+                    if os.path.getmtime(fpath) > one_hour_ago:
+                        recent_sessions += 1
+        except Exception:
+            pass
+
+        # 判断状态
+        last_ms = session_meta["lastActivityMs"]
+        if last_ms > 0 and (now_ms - last_ms) < five_min_ms:
+            status = "active"
+        elif last_ms > 0 and (now_ms - last_ms) < one_hour_ms:
+            status = "idle"
+        else:
+            status = "offline"
+
+        last_activity_at = None
+        if last_ms > 0:
+            last_activity_at = datetime.fromtimestamp(last_ms / 1000).isoformat()
+
+        details.append({
+            "agentId": agent_id,
+            "name": meta["name"],
+            "emoji": meta["emoji"],
+            "role": role_summary,
+            "status": status,
+            "lastActivityAt": last_activity_at,
+            "totalSessions": total_sessions,
+            "recentSessions": recent_sessions,
+            "totalInputTokens": session_meta["totalInputTokens"],
+            "totalOutputTokens": session_meta["totalOutputTokens"],
+            "isOrchestrator": agent_id == "main",
+        })
+
+    # 排序: orchestrator first, then active, idle, offline
+    status_order = {"active": 0, "idle": 1, "offline": 2}
+    details.sort(key=lambda d: (0 if d["isOrchestrator"] else 1, status_order.get(d["status"], 3)))
+
+    return details
+
+
 def get_full_status():
     """获取完整的 OpenClaw 状态概览"""
     config = get_openclaw_config()
@@ -273,6 +409,7 @@ def get_full_status():
     runs = get_recent_cron_runs(10)
     memory = get_today_memory()
     office_state = infer_office_state()
+    agent_details = get_agent_details()
 
     enabled_jobs = [j for j in jobs if j.get("enabled")]
     ok_jobs = [j for j in enabled_jobs if j.get("lastStatus") == "ok"]
@@ -292,6 +429,7 @@ def get_full_status():
         "cronJobs": enabled_jobs,
         "recentRuns": runs,
         "agents": sessions,
+        "agentDetails": agent_details,
         "todayMemory": memory,
         "updatedAt": datetime.now().isoformat(),
     }
