@@ -1,0 +1,10 @@
+{
+  "framework": null,
+  "buildCommand": "bash build.sh",
+  "installCommand": "echo 'skip'",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/static/(.*)", "destination": "/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
