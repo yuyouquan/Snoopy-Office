@@ -10,7 +10,8 @@ const AGENT_STATUS_LABELS = { active: '活跃', idle: '待命', offline: '离线
 
 async function fetchOpenClawStatus() {
   try {
-    const resp = await fetch('/openclaw/status?t=' + Date.now(), { cache: 'no-store' });
+    const base = (typeof getApiBase === 'function') ? getApiBase() : '';
+    const resp = await fetch(base + '/openclaw/status?t=' + Date.now(), { cache: 'no-store' });
     const data = await resp.json();
     if (data.ok) {
       openclawData = data;

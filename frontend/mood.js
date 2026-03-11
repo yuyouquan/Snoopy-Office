@@ -48,7 +48,8 @@ function setMood(moodKey, label) {
   }
 
   // Send mood to backend
-  fetch('/mood', {
+  const base = (typeof getApiBase === 'function') ? getApiBase() : '';
+  fetch(base + '/mood', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mood: moodKey, label: config.label })
@@ -71,7 +72,8 @@ function getMoodBubble() {
 // Load mood from backend on init
 async function loadMoodState() {
   try {
-    const resp = await fetch('/mood?t=' + Date.now(), { cache: 'no-store' });
+    const base = (typeof getApiBase === 'function') ? getApiBase() : '';
+    const resp = await fetch(base + '/mood?t=' + Date.now(), { cache: 'no-store' });
     const data = await resp.json();
     if (data.mood && MOOD_CONFIG[data.mood]) {
       setMood(data.mood, MOOD_CONFIG[data.mood].label);

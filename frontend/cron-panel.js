@@ -134,7 +134,8 @@ async function loadCronJobDetail(jobId) {
   panel.innerHTML = `<div style="color:#9ca3af;font-size:11px;padding:8px;text-align:center;">加载 "${jobName}" 执行历史...</div>`;
 
   try {
-    const resp = await fetch(`/openclaw/cron/${jobId}/runs?t=${Date.now()}`, { cache: 'no-store' });
+    const base = (typeof getApiBase === 'function') ? getApiBase() : '';
+    const resp = await fetch(`${base}/openclaw/cron/${jobId}/runs?t=${Date.now()}`, { cache: 'no-store' });
     const data = await resp.json();
     if (!data.ok) {
       panel.innerHTML = `<div style="color:#ef4444;font-size:11px;padding:8px;">加载失败: ${data.error || '未知错误'}</div>`;

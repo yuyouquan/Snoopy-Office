@@ -1354,6 +1354,10 @@
 
     <script src="/static/vendor/phaser-3.80.1.min.js?v={{VERSION_TIMESTAMP}}"></script>
     <script>
+        // OpenClaw API 地址 (空=同源, 设置后指向隧道地址)
+        window.OPENCLAW_API_BASE = '{{OPENCLAW_API_BASE}}';
+        function getApiBase() { return window.OPENCLAW_API_BASE || ''; }
+
         // 简易中英文切换
         let uiLang = localStorage.getItem('uiLang') || 'en';
         const I18N = {
