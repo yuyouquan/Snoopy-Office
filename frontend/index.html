@@ -1620,7 +1620,7 @@
             const memoContent = document.getElementById('memo-content');
             
             try {
-                const response = await fetch('/yesterday-memo?t=' + Date.now(), { cache: 'no-store' });
+                const response = await fetch(getApiBase() + '/yesterday-memo?t=' + Date.now(), { cache: 'no-store' });
                 const data = await response.json();
                 
                 if (data.success && data.memo) {
@@ -1793,7 +1793,7 @@
 
         // 状态控制栏函数（用于测试）
         function setState(state, detail) {
-            fetch('/set_state', {
+            fetch(getApiBase() + '/set_state', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ state, detail })
@@ -1831,7 +1831,7 @@
                 return;
             }
             try {
-                const res = await fetch('/assets/auth', {
+                const res = await fetch(getApiBase() + '/assets/auth', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: val })
@@ -2233,12 +2233,12 @@
                 let serverPositions = {};
                 let serverDefaults = {};
                 try {
-                    const res = await fetch('/assets/positions?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch(getApiBase() + '/assets/positions?t=' + Date.now(), { cache: 'no-store' });
                     const data = await res.json();
                     if (data && data.ok && data.items) serverPositions = data.items;
                 } catch (e) {}
                 try {
-                    const res2 = await fetch('/assets/defaults?t=' + Date.now(), { cache: 'no-store' });
+                    const res2 = await fetch(getApiBase() + '/assets/defaults?t=' + Date.now(), { cache: 'no-store' });
                     const data2 = await res2.json();
                     if (data2 && data2.ok && data2.items) serverDefaults = data2.items;
                 } catch (e) {}
@@ -2557,7 +2557,7 @@
             const out = document.getElementById('asset-upload-result');
             try {
                 const selectedPath = (selectedAssetInfo && selectedAssetInfo.path) ? selectedAssetInfo.path : '';
-                const res = await fetch('/assets/list?t=' + Date.now(), { cache: 'no-store' });
+                const res = await fetch(getApiBase() + '/assets/list?t=' + Date.now(), { cache: 'no-store' });
                 const data = await res.json();
                 assetListData = data.items || [];
 
@@ -2726,7 +2726,7 @@
             }
 
             out.textContent = '⏳ 正在上传并替换，请稍候...';
-            const res = await fetch('/assets/upload', { method: 'POST', body: fd });
+            const res = await fetch(getApiBase() + '/assets/upload', { method: 'POST', body: fd });
             const data = await res.json();
             if (!data.ok) {
                 out.textContent = `❌ 更新失败：${data.msg || res.status}`;
@@ -2916,13 +2916,13 @@ function toggleBrokerPanel() {
 
         async function ensureGeminiConfigLoaded() {
             try {
-                const authRes = await fetch('/assets/auth/status', { cache: 'no-store' });
+                const authRes = await fetch(getApiBase() + '/assets/auth/status', { cache: 'no-store' });
                 const authData = await authRes.json();
                 assetDrawerAuthed = !!(authData && authData.ok && authData.authed);
                 updateAssetAuthUI();
                 if (!assetDrawerAuthed) return;
 
-                const res = await fetch('/config/gemini', { cache: 'no-store' });
+                const res = await fetch(getApiBase() + '/config/gemini', { cache: 'no-store' });
                 const data = await res.json();
                 if (data && data.ok) {
                     window.geminiConfig = {
@@ -2950,7 +2950,7 @@ function toggleBrokerPanel() {
                 return;
             }
             try {
-                const res = await fetch('/config/gemini', {
+                const res = await fetch(getApiBase() + '/config/gemini', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ api_key: key, model: 'nanobanana-pro' })
@@ -2984,7 +2984,7 @@ function toggleBrokerPanel() {
 
         // Async generation: start task then poll for result (avoids Cloudflare 524 timeout)
         async function _startAndPollGeneration(body, out, progressMsg) {
-            const res = await fetch('/assets/generate-rpg-background', {
+            const res = await fetch(getApiBase() + '/assets/generate-rpg-background', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -3006,7 +3006,7 @@ function toggleBrokerPanel() {
                 const elapsed = Math.round((Date.now() - startTime) / 1000);
                 out.textContent = progressMsg + '（已等待 ' + elapsed + '秒）' + '.'.repeat(dots);
                 try {
-                    const pollRes = await fetch('/assets/generate-rpg-background/poll?task_id=' + encodeURIComponent(taskId));
+                    const pollRes = await fetch(getApiBase() + '/assets/generate-rpg-background/poll?task_id=' + encodeURIComponent(taskId));
                     const pollData = await pollRes.json();
                     if (pollData.status === 'pending') continue;
                     return pollData; // done or error
@@ -3117,7 +3117,7 @@ function toggleBrokerPanel() {
             showRoomLoadingOverlay();
             out.textContent = '🏡 正在回老家（恢复初始底图）...';
             try {
-                const res = await fetch('/assets/restore-reference-background', { method: 'POST' });
+                const res = await fetch(getApiBase() + '/assets/restore-reference-background', { method: 'POST' });
                 const data = await res.json();
                 if (!data.ok) {
                     out.textContent = `❌ 恢复失败：${data.msg || res.status}`;
@@ -3152,7 +3152,7 @@ function toggleBrokerPanel() {
             showRoomLoadingOverlay();
             out.textContent = '↩️ 正在回退到最近一次生成底图...';
             try {
-                const res = await fetch('/assets/restore-last-generated-background', { method: 'POST' });
+                const res = await fetch(getApiBase() + '/assets/restore-last-generated-background', { method: 'POST' });
                 const data = await res.json();
                 if (!data.ok) {
                     out.textContent = `❌ 回退失败：${data.msg || res.status}`;
@@ -3292,7 +3292,7 @@ function toggleBrokerPanel() {
             }
             if (!window.confirm(`⚠️ 确定将 ${path} 重置为默认资产吗？`)) return;
             try {
-                const res = await fetch('/assets/restore-default', {
+                const res = await fetch(getApiBase() + '/assets/restore-default', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ path })
@@ -3318,7 +3318,7 @@ function toggleBrokerPanel() {
             }
             if (!window.confirm(`⚠️ 确定将 ${path} 回退到上一版吗？`)) return;
             try {
-                const res = await fetch('/assets/restore-prev', {
+                const res = await fetch(getApiBase() + '/assets/restore-prev', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ path })
@@ -3399,7 +3399,7 @@ function toggleBrokerPanel() {
         }
 
         function leaveGuestAgent(agentId, name) {
-            fetch('/leave-agent', {
+            fetch(getApiBase() + '/leave-agent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ agentId, name })
@@ -3434,7 +3434,7 @@ function toggleBrokerPanel() {
         }
 
         function approveGuestAgent(agentId) {
-            fetch('/agent-approve', {
+            fetch(getApiBase() + '/agent-approve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ agentId })
@@ -3451,7 +3451,7 @@ function toggleBrokerPanel() {
         }
 
         function rejectGuestAgent(agentId) {
-            fetch('/agent-reject', {
+            fetch(getApiBase() + '/agent-reject', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ agentId })
@@ -3908,7 +3908,7 @@ function toggleBrokerPanel() {
             // demo 随机状态先更新（不依赖后端）
             maybeRandomizeDemoVisitors();
 
-            return fetch('/agents?t=' + Date.now(), { cache: 'no-store' })
+            return fetch(getApiBase() + '/agents?t=' + Date.now(), { cache: 'no-store' })
                 .then(response => response.json())
                 .then(data => {
                     // 无论后端返回是否为数组，demo=1 都应保证本地 demo 访客可见
@@ -3994,7 +3994,7 @@ function toggleBrokerPanel() {
             setTimeout(async () => {
                 // 动态探测 flowers 精灵表帧规格（避免写死 65x65 导致显示比例异常）
                 try {
-                    const res = await fetch('/assets/list?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch(getApiBase() + '/assets/list?t=' + Date.now(), { cache: 'no-store' });
                     const data = await res.json();
                     if (data && data.ok && Array.isArray(data.items)) {
                         const flowerItem = data.items.find(it => (it.path || '').toLowerCase().includes('flowers-bloom-v2'));
@@ -4013,7 +4013,7 @@ function toggleBrokerPanel() {
                 // Only fetch /assets/positions and /assets/defaults when user is authed,
                 // to avoid 401 Unauthorized on first load for new visitors (issue #54).
                 try {
-                    const authRes = await fetch('/assets/auth/status', { cache: 'no-store' });
+                    const authRes = await fetch(getApiBase() + '/assets/auth/status', { cache: 'no-store' });
                     const authData = await authRes.json();
                     if (authData && authData.ok && authData.authed) {
                         await applySavedPositionOverrides();
@@ -4744,7 +4744,7 @@ function toggleBrokerPanel() {
         }
 
         function fetchStatus() {
-            return fetch('/status', { cache: 'no-store' })
+            return fetch(getApiBase() + '/status', { cache: 'no-store' })
                 .then(response => response.json())
                 .then(data => {
                     try {

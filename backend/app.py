@@ -84,13 +84,8 @@ STATE_TO_AREA_MAP = {
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="/static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY") or os.getenv("STAR_OFFICE_SECRET") or "star-office-dev-secret-change-me"
 
-# CORS: 允许 Vercel 前端访问只读 API 端点
-CORS(app, resources={
-    r"/openclaw/*": {"origins": "*", "methods": ["GET"]},
-    r"/mood": {"origins": "*", "methods": ["GET"]},
-    r"/status": {"origins": "*", "methods": ["GET"]},
-    r"/health": {"origins": "*", "methods": ["GET"]},
-})
+# CORS: 允许 Vercel 前端跨域访问所有 API 端点
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Session hardening
 app.config.update(
