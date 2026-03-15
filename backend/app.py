@@ -37,7 +37,7 @@ except Exception:
 
 # Paths (project-relative, no hardcoded absolute paths)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MEMORY_DIR = os.path.join(os.path.dirname(ROOT_DIR), "memory")
+MEMORY_DIR = os.path.join(os.path.dirname(os.path.dirname(ROOT_DIR)), "memory")
 FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
 FRONTEND_INDEX_FILE = os.path.join(FRONTEND_DIR, "index.html")
 FRONTEND_ELECTRON_STANDALONE_FILE = os.path.join(FRONTEND_DIR, "electron-standalone.html")
