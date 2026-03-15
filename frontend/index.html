@@ -1241,6 +1241,13 @@
                         <div style="color:#6b7280;font-size:11px;text-align:center;padding:8px;">加载中...</div>
                     </div>
                 </div>
+                <!-- 工作数据统计面板 -->
+                <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                    <div style="color:#a78bfa;font-size:13px;font-weight:600;letter-spacing:0.5px;margin-bottom:8px;">📊 工作数据</div>
+                    <div id="stats-dashboard" style="min-height:40px;">
+                        <div style="color:#6b7280;font-size:11px;text-align:center;padding:8px;">加载中...</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -4766,6 +4773,11 @@ function toggleBrokerPanel() {
                         }
                         applyVisualState(nextState);
 
+                        // 更新氛围系统粒子效果
+                        if (typeof updateAtmosphere === 'function') updateAtmosphere(nextState);
+                        // 通知系统: 状态变更
+                        if (changed && typeof notifyStateChange === 'function') notifyStateChange(nextState, currentState);
+
                         if (changed) {
                             typewriterTarget = nextLine;
                             typewriterText = '';
@@ -4971,5 +4983,10 @@ function toggleBrokerPanel() {
     <script src="/static/achievements.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/openclaw-panel.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/cron-panel.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/notifications.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/stats-panel.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/memo-browser.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/atmosphere.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/shortcuts.js?v={{VERSION_TIMESTAMP}}"></script>
 </body>
 </html>

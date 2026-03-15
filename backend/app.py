@@ -2201,6 +2201,95 @@ def assets_upload():
         return jsonify({"ok": False, "msg": str(e)}), 500
 
 
+# ─── Memo Browser APIs ───
+
+@app.route("/memo/list", methods=["GET"])
+def memo_list():
+    """获取可用日记日期列表"""
+    try:
+        if not os.path.exists(MEMORY_DIR):
+            return jsonify({"ok": True, "dates": []})
+        date_pattern = re.compile(r"^\d{4}-\d{2}-\d{2}\.md$")
+        files = [f for f in os.listdir(MEMORY_DIR) if date_pattern.match(f)]
+        dates = sorted([f.replace(".md", "") for f in files], reverse=True)[:30]
+        return jsonify({"ok": True, "dates": dates})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/memo/<date>", methods=["GET"])
+def memo_detail(date):
+    """获取指定日期的日记内容"""
+    try:
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", date):
+            return jsonify({"ok": False, "msg": "日期格式无效"}), 400
+        memo_file = os.path.join(MEMORY_DIR, f"{date}.md")
+        if not os.path.exists(memo_file):
+            return jsonify({"ok": False, "msg": "该日期没有日记"})
+        memo_content = extract_memo_from_file(memo_file)
+        return jsonify({"ok": True, "date": date, "memo": memo_content})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+# ─── Stats APIs ───
+
+@app.route("/stats/today-timeline", methods=["GET"])
+def stats_today_timeline():
+    """获取今日状态变化时间线"""
+    try:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        if not os.path.exists(STATE_FILE):
+            return jsonify({"ok": True, "date": today_str, "timeline": []})
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            state_data = json.load(f)
+        history = state_data.get("history", [])
+        timeline = [
+            entry for entry in history
+            if entry.get("ts", "").startswith(today_str)
+        ]
+        return jsonify({"ok": True, "date": today_str, "timeline": timeline})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/stats/weekly", methods=["GET"])
+def stats_weekly():
+    """获取过去7天聚合统计"""
+    try:
+        today = datetime.now().date()
+        days = []
+        for i in range(7):
+            d = today - timedelta(days=i)
+            date_str = d.strftime("%Y-%m-%d")
+            memo_file = os.path.join(MEMORY_DIR, f"{date_str}.md")
+            days.append({
+                "date": date_str,
+                "hasMemo": os.path.exists(memo_file),
+            })
+        cron_health = {"total": 0, "healthy": 0, "errorRate": 0.0}
+        try:
+            status = get_full_status()
+            cron_jobs = status.get("cronJobs", [])
+            total = len(cron_jobs)
+            if total > 0:
+                error_count = sum(
+                    1 for j in cron_jobs
+                    if j.get("lastStatus", "").lower() in ("error", "failed")
+                )
+                healthy = total - error_count
+                cron_health = {
+                    "total": total,
+                    "healthy": healthy,
+                    "errorRate": round(error_count / total, 2),
+                }
+        except Exception:
+            pass
+        return jsonify({"ok": True, "days": days, "cronHealth": cron_health})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
 if __name__ == "__main__":
     raw_port = os.environ.get("STAR_BACKEND_PORT", "19000")
     try:

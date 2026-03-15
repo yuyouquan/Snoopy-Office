@@ -18,6 +18,11 @@ async function fetchOpenClawStatus() {
       renderOpenClawPanel(data);
       renderAgentGrid(data.agentDetails || []);
       if (typeof renderCronPanel === 'function') renderCronPanel(data);
+      // 通知系统: 检测Cron和Agent状态变化
+      if (typeof detectCronChanges === 'function') detectCronChanges(data.cronJobs || []);
+      if (typeof detectAgentChanges === 'function') detectAgentChanges(data.agentDetails || []);
+      // 统计面板: 刷新数据
+      if (typeof refreshStatsPanel === 'function') refreshStatsPanel();
       const dot = document.getElementById('openclaw-conn-dot');
       if (dot) dot.style.background = '#22c55e';
     }
