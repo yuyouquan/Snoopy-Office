@@ -1248,6 +1248,22 @@
                         <div style="color:#6b7280;font-size:11px;text-align:center;padding:8px;">加载中...</div>
                     </div>
                 </div>
+                <!-- 工作热力图 -->
+                <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                    <div style="color:#39d353;font-size:13px;font-weight:600;letter-spacing:0.5px;margin-bottom:8px;">🟩 活跃热力图</div>
+                    <div id="heatmap-container" style="min-height:40px;overflow-x:auto;">
+                        <div style="color:#6b7280;font-size:11px;text-align:center;padding:8px;">加载中...</div>
+                    </div>
+                </div>
+                <!-- 每日虾签 -->
+                <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <div style="color:#fbbf24;font-size:13px;font-weight:600;letter-spacing:0.5px;">🎋 每日虾签</div>
+                        <div onclick="openShareCard()" style="color:#06b6d4;font-size:10px;cursor:pointer;border:1px solid #06b6d433;border-radius:4px;padding:2px 8px;">📸 分享卡片</div>
+                    </div>
+                    <div id="fortune-container" style="min-height:40px;">
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -4988,5 +5004,9 @@ function toggleBrokerPanel() {
     <script src="/static/memo-browser.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/atmosphere.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/shortcuts.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/heatmap.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/fortune.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/interactions.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/share-card.js?v={{VERSION_TIMESTAMP}}"></script>
 </body>
 </html>

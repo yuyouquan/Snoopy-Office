@@ -12,6 +12,7 @@ const SHORTCUT_MAP = {
   'm': { action: 'mood', label: '心情选择器' },
   'n': { action: 'notifications', label: '通知面板' },
   'd': { action: 'drawer', label: '装修抽屉' },
+  's': { action: 'share', label: '生成分享卡片' },
   '?': { action: 'help', label: '快捷键帮助' }
 };
 
@@ -99,6 +100,12 @@ function handleShortcut(e) {
       }
       break;
     }
+
+    case 'share':
+      if (typeof openShareCard === 'function') {
+        openShareCard();
+      }
+      break;
 
     case 'help':
       toggleShortcutHelp();

@@ -2290,6 +2290,133 @@ def stats_weekly():
         return jsonify({"ok": False, "msg": str(e)}), 500
 
 
+# ─── Heatmap API ───
+
+@app.route("/stats/heatmap", methods=["GET"])
+def stats_heatmap():
+    """获取90天活动热力图数据"""
+    try:
+        today = datetime.now().date()
+        days = []
+        total_active = 0
+        current_streak = 0
+        longest_streak = 0
+        streak_counting = True
+
+        for offset in range(90):
+            d = today - timedelta(days=offset)
+            date_str = d.strftime("%Y-%m-%d")
+
+            has_memo = os.path.exists(os.path.join(MEMORY_DIR, f"{date_str}.md")) if os.path.exists(MEMORY_DIR) else False
+
+            report_count = 0
+            if os.path.exists(MEMORY_DIR):
+                prefix = f"project-status-{date_str}"
+                report_count = sum(
+                    1 for f in os.listdir(MEMORY_DIR)
+                    if f.startswith(prefix) and f.endswith(".md")
+                )
+
+            if not has_memo and report_count == 0:
+                level = 0
+            elif has_memo and report_count == 0:
+                level = 1
+            elif has_memo and 1 <= report_count <= 2:
+                level = 2
+            elif has_memo and 3 <= report_count <= 5:
+                level = 3
+            elif (has_memo and report_count >= 6) or report_count >= 4:
+                level = 4
+            else:
+                level = 1 if has_memo else (1 if report_count > 0 else 0)
+
+            days.append({
+                "date": date_str,
+                "level": level,
+                "hasMemo": has_memo,
+                "reportCount": report_count,
+            })
+
+            if level > 0:
+                total_active += 1
+
+            if streak_counting:
+                if level > 0:
+                    current_streak += 1
+                else:
+                    streak_counting = False
+
+        # Calculate longest streak across all 90 days
+        running_streak = 0
+        for day_entry in days:
+            if day_entry["level"] > 0:
+                running_streak += 1
+                if running_streak > longest_streak:
+                    longest_streak = running_streak
+            else:
+                running_streak = 0
+
+        return jsonify({
+            "ok": True,
+            "days": days,
+            "totalActiveDays": total_active,
+            "currentStreak": current_streak,
+            "longestStreak": longest_streak,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+# ─── Daily Fortune API ───
+
+FORTUNE_POOL = [
+    {"fortune": "大吉", "color": "#ff6b6b", "emoji": "🦞", "message": "今天适合写代码，Bug会主动消失", "tip": "宜: 重构代码  忌: 删除node_modules"},
+    {"fortune": "吉", "color": "#fbbf24", "emoji": "🍤", "message": "虾运当头，适合提PR", "tip": "宜: Code Review  忌: 直接push main"},
+    {"fortune": "中吉", "color": "#22c55e", "emoji": "🦐", "message": "稳扎稳打的一天", "tip": "宜: 写测试  忌: 跳过测试"},
+    {"fortune": "小吉", "color": "#06b6d4", "emoji": "🐚", "message": "会有小惊喜出现", "tip": "宜: 探索新技术  忌: 碰生产环境"},
+    {"fortune": "末吉", "color": "#a78bfa", "emoji": "🐡", "message": "先苦后甜，耐心等待", "tip": "宜: Debug  忌: 急着部署"},
+    {"fortune": "凶", "color": "#6b7280", "emoji": "🦀", "message": "小心线上事故", "tip": "宜: 写文档  忌: 改配置文件"},
+    {"fortune": "大凶", "color": "#ef4444", "emoji": "💀", "message": "今天不适合碰代码", "tip": "宜: 摸鱼  忌: 一切操作"},
+    {"fortune": "吉", "color": "#f59e0b", "emoji": "🐙", "message": "八爪鱼附体，多线程工作效率拉满", "tip": "宜: 并行处理任务  忌: 单线程思考"},
+    {"fortune": "中吉", "color": "#10b981", "emoji": "🐢", "message": "慢即是快，代码质量很高", "tip": "宜: 仔细审查  忌: 赶进度"},
+    {"fortune": "大吉", "color": "#ec4899", "emoji": "🎯", "message": "灵感爆发，架构设计一次到位", "tip": "宜: 系统设计  忌: 纠结命名"},
+    {"fortune": "小吉", "color": "#8b5cf6", "emoji": "🔮", "message": "预感今天能解决遗留问题", "tip": "宜: 还技术债  忌: 新增TODO"},
+    {"fortune": "吉", "color": "#14b8a6", "emoji": "🌊", "message": "顺水推舟，一切顺利", "tip": "宜: 发版上线  忌: 回滚"},
+    {"fortune": "末吉", "color": "#78716c", "emoji": "🧘", "message": "静下心来，答案自然浮现", "tip": "宜: 阅读源码  忌: 复制粘贴"},
+    {"fortune": "中吉", "color": "#84cc16", "emoji": "🌱", "message": "播种的日子，写的代码将来会感谢自己", "tip": "宜: 写注释  忌: Magic Number"},
+    {"fortune": "小吉", "color": "#f97316", "emoji": "🍜", "message": "吃碗拉面，灵感就来了", "tip": "宜: 午饭后编码  忌: 饿着肚子开会"},
+    {"fortune": "凶", "color": "#94a3b8", "emoji": "🕳️", "message": "注意内存泄漏和死循环", "tip": "宜: 检查资源释放  忌: 写递归"},
+]
+
+LUCKY_STATES = ["idle", "writing", "researching", "executing", "syncing"]
+
+
+@app.route("/fortune", methods=["GET"])
+def daily_fortune():
+    """获取每日虾签"""
+    try:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        seed = hash(today_str)
+        fortune_index = seed % len(FORTUNE_POOL)
+        selected = FORTUNE_POOL[fortune_index]
+        lucky_number = (seed % 99) + 1
+        lucky_state = LUCKY_STATES[seed % len(LUCKY_STATES)]
+
+        return jsonify({
+            "ok": True,
+            "date": today_str,
+            "fortune": selected["fortune"],
+            "color": selected["color"],
+            "emoji": selected["emoji"],
+            "message": selected["message"],
+            "tip": selected["tip"],
+            "luckyNumber": lucky_number,
+            "luckyState": lucky_state,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
 if __name__ == "__main__":
     raw_port = os.environ.get("STAR_BACKEND_PORT", "19000")
     try:
