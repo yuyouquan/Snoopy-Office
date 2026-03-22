@@ -52,23 +52,23 @@ function renderSimpleMarkdown(text) {
   // Code blocks (```)
   html = html.replace(/```[\s\S]*?```/g, (match) => {
     const code = match.slice(3, -3).replace(/^\w*\n/, '');
-    return '<pre style="background:rgba(0,0,0,0.3);padding:6px 8px;border-radius:4px;font-size:10px;overflow-x:auto;margin:4px 0;">' + code + '</pre>';
+    return '<pre style="background:rgba(0,0,0,0.08);padding:6px 8px;border-radius:4px;font-size:10px;overflow-x:auto;margin:4px 0;color:#333;">' + code + '</pre>';
   });
 
   // Inline code
   html = html.replace(/`([^`]+)`/g,
-    '<code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:2px;font-size:10px;">$1</code>');
+    '<code style="background:rgba(0,0,0,0.08);padding:1px 4px;border-radius:2px;font-size:10px;color:#333;">$1</code>');
 
   // Bold
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#e5e7eb;">$1</strong>');
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#000;">$1</strong>');
 
   // Headers (## and #)
   html = html.replace(/^### (.+)$/gm,
-    '<div style="color:#06b6d4;font-size:11px;font-weight:bold;margin:6px 0 2px;">$1</div>');
+    '<div style="color:#1a1a1a;font-size:11px;font-weight:bold;margin:6px 0 2px;">$1</div>');
   html = html.replace(/^## (.+)$/gm,
-    '<div style="color:#06b6d4;font-size:12px;font-weight:bold;margin:8px 0 3px;">$1</div>');
+    '<div style="color:#1a1a1a;font-size:12px;font-weight:bold;margin:8px 0 3px;">$1</div>');
   html = html.replace(/^# (.+)$/gm,
-    '<div style="color:#06b6d4;font-size:13px;font-weight:bold;margin:8px 0 4px;">$1</div>');
+    '<div style="color:#1a1a1a;font-size:13px;font-weight:bold;margin:8px 0 4px;">$1</div>');
 
   // Unordered list items
   html = html.replace(/^[\-\*] (.+)$/gm,
@@ -96,7 +96,7 @@ function renderMemoBrowser() {
   if (!nav) {
     nav = document.createElement('div');
     nav.id = 'memo-nav';
-    nav.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px;';
+    nav.style.cssText = 'display:flex;flex-direction:column;align-items:center;margin-bottom:6px;gap:4px;';
 
     const memoCard = container.closest('.memo-card') || container.parentElement;
     if (dateEl) {
@@ -112,24 +112,26 @@ function renderMemoBrowser() {
   const currentDate = dates[idx] || '';
   const displayDate = currentDate ? formatMemoDate(currentDate) : '暂无日记';
 
-  nav.innerHTML = [
-    `<button onclick="memoNavPrev()" style="background:none;border:1px solid ${hasPrev ? '#555' : '#333'};color:${hasPrev ? '#d1d5db' : '#444'};cursor:${hasPrev ? 'pointer' : 'default'};padding:2px 8px;border-radius:4px;font-family:ArkPixel,monospace;font-size:12px;" ${hasPrev ? '' : 'disabled'}>◀</button>`,
-    `<span style="color:#9ca3af;font-size:11px;flex:1;text-align:center;">${displayDate}</span>`,
-    `<button onclick="memoNavNext()" style="background:none;border:1px solid ${hasNext ? '#555' : '#333'};color:${hasNext ? '#d1d5db' : '#444'};cursor:${hasNext ? 'pointer' : 'default'};padding:2px 8px;border-radius:4px;font-family:ArkPixel,monospace;font-size:12px;" ${hasNext ? '' : 'disabled'}>▶</button>`
-  ].join('');
+  // Row 1: ◀ date ▶
+  let html = '<div style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;">';
+  html += `<button onclick="memoNavPrev()" style="background:rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.3);color:${hasPrev ? '#333' : '#999'};cursor:${hasPrev ? 'pointer' : 'default'};padding:2px 8px;border-radius:4px;font-family:ArkPixel,monospace;font-size:12px;" ${hasPrev ? '' : 'disabled'}>◀</button>`;
+  html += `<span style="color:#333;font-size:11px;text-align:center;">${displayDate}</span>`;
+  html += `<button onclick="memoNavNext()" style="background:rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.3);color:${hasNext ? '#333' : '#999'};cursor:${hasNext ? 'pointer' : 'default'};padding:2px 8px;border-radius:4px;font-family:ArkPixel,monospace;font-size:12px;" ${hasNext ? '' : 'disabled'}>▶</button>`;
+  html += '</div>';
 
-  // Date dots (recent 7 dates)
+  // Row 2: dots
   if (dates.length > 1) {
-    let dotsHtml = '<div style="display:flex;justify-content:center;gap:4px;margin-top:4px;">';
+    html += '<div style="display:flex;justify-content:center;gap:4px;">';
     const visibleDates = dates.slice(0, 7);
     for (let i = 0; i < visibleDates.length; i++) {
       const isActive = i === idx;
-      const dotColor = isActive ? '#06b6d4' : '#444';
-      dotsHtml += `<span onclick="memoNavTo(${i})" style="width:6px;height:6px;border-radius:50%;background:${dotColor};cursor:pointer;transition:background 0.2s;" title="${visibleDates[i]}"></span>`;
+      const dotColor = isActive ? '#d97706' : 'rgba(0,0,0,0.2)';
+      html += `<span onclick="memoNavTo(${i})" style="width:6px;height:6px;border-radius:50%;background:${dotColor};cursor:pointer;transition:background 0.2s;" title="${visibleDates[i]}"></span>`;
     }
-    dotsHtml += '</div>';
-    nav.innerHTML += dotsHtml;
+    html += '</div>';
   }
+
+  nav.innerHTML = html;
 }
 
 function formatMemoDate(dateStr) {
@@ -158,21 +160,21 @@ async function loadMemoForCurrentDate() {
 
   const date = memoBrowserState.dates[memoBrowserState.currentIndex];
   if (!date) {
-    container.innerHTML = '<div style="color:#6b7280;font-size:11px;text-align:center;padding:12px;">暂无日记</div>';
+    container.innerHTML = '<div style="color:#666;font-size:11px;text-align:center;padding:12px;">暂无日记</div>';
     return;
   }
 
   if (memoBrowserState.loading) return;
   memoBrowserState.loading = true;
-  container.innerHTML = '<div style="color:#6b7280;font-size:11px;text-align:center;padding:8px;">加载中...</div>';
+  container.innerHTML = '<div style="color:#666;font-size:11px;text-align:center;padding:8px;">加载中...</div>';
 
   const result = await fetchMemoByDate(date);
   memoBrowserState.loading = false;
 
   if (result && result.memo) {
-    container.innerHTML = `<div style="color:#d1d5db;font-size:11px;line-height:1.6;max-height:200px;overflow-y:auto;">${renderSimpleMarkdown(result.memo)}</div>`;
+    container.innerHTML = `<div style="color:#1a1a1a;font-size:11px;line-height:1.6;max-height:200px;overflow-y:auto;text-align:center;">${renderSimpleMarkdown(result.memo)}</div>`;
   } else {
-    container.innerHTML = '<div style="color:#6b7280;font-size:11px;text-align:center;padding:12px;">该日期暂无日记内容</div>';
+    container.innerHTML = '<div style="color:#666;font-size:11px;text-align:center;padding:12px;">该日期暂无日记内容</div>';
   }
 
   memoBrowserState.currentDate = date;
