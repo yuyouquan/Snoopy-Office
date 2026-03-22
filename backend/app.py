@@ -2236,19 +2236,137 @@ def memo_detail(date):
 
 @app.route("/stats/today-timeline", methods=["GET"])
 def stats_today_timeline():
-    """获取今日状态变化时间线"""
+    """获取今日状态变化时间线（从 OpenClaw agent sessions 和报告文件读取）"""
     try:
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        if not os.path.exists(STATE_FILE):
-            return jsonify({"ok": True, "date": today_str, "timeline": []})
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            state_data = json.load(f)
-        history = state_data.get("history", [])
-        timeline = [
-            entry for entry in history
-            if entry.get("ts", "").startswith(today_str)
-        ]
-        return jsonify({"ok": True, "date": today_str, "timeline": timeline})
+        now = datetime.now()
+        today_str = now.strftime("%Y-%m-%d")
+        events = []
+
+        # 1. Read agent activity from openclaw_bridge
+        try:
+            status = get_full_status()
+            agent_details = status.get("agentDetails", [])
+            for agent in agent_details:
+                last_at = agent.get("lastActivityAt")
+                if not last_at or not last_at.startswith(today_str):
+                    continue
+                try:
+                    ts = datetime.fromisoformat(last_at)
+                    events.append({
+                        "time": ts,
+                        "state": agent.get("status", "active"),
+                        "source": agent.get("name", agent.get("agentId", "unknown")),
+                    })
+                except (ValueError, TypeError):
+                    pass
+        except Exception:
+            pass
+
+        # 2. Scan MEMORY_DIR for project-status files created today
+        try:
+            if os.path.exists(MEMORY_DIR):
+                prefix = f"project-status-{today_str}"
+                for fname in os.listdir(MEMORY_DIR):
+                    if fname.startswith(prefix) and fname.endswith(".md"):
+                        # Extract timestamp from filename like project-status-2026-03-22-0930.md
+                        stem = fname.replace(".md", "")
+                        time_part = stem.replace(f"project-status-{today_str}", "").lstrip("-")
+                        ts = None
+                        if len(time_part) == 4 and time_part.isdigit():
+                            hour, minute = int(time_part[:2]), int(time_part[2:])
+                            ts = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                        elif len(time_part) == 6 and time_part.isdigit():
+                            hour, minute, sec = int(time_part[:2]), int(time_part[2:4]), int(time_part[4:])
+                            ts = now.replace(hour=hour, minute=minute, second=sec, microsecond=0)
+                        if ts is None:
+                            # Fallback: use file modification time
+                            fpath = os.path.join(MEMORY_DIR, fname)
+                            mtime = os.path.getmtime(fpath)
+                            mdt = datetime.fromtimestamp(mtime)
+                            if mdt.strftime("%Y-%m-%d") == today_str:
+                                ts = mdt
+                        if ts is not None:
+                            events.append({
+                                "time": ts,
+                                "state": "writing",
+                                "source": fname,
+                            })
+        except Exception:
+            pass
+
+        # 3. Read current state from state.json
+        current_state = "idle"
+        state_updated_at = None
+        try:
+            if os.path.exists(STATE_FILE):
+                with open(STATE_FILE, "r", encoding="utf-8") as f:
+                    state_data = json.load(f)
+                current_state = state_data.get("state", "idle")
+                updated_at_str = state_data.get("updated_at", "")
+                if updated_at_str and updated_at_str.startswith(today_str):
+                    try:
+                        state_updated_at = datetime.fromisoformat(updated_at_str)
+                    except (ValueError, TypeError):
+                        pass
+                    events.append({
+                        "time": state_updated_at or now,
+                        "state": current_state,
+                        "source": "state.json",
+                    })
+        except Exception:
+            pass
+
+        # 4. Sort events by time and build segments
+        events.sort(key=lambda e: e["time"])
+
+        segments = []
+        if events:
+            for evt in events:
+                time_str = evt["time"].strftime("%H:%M")
+                if segments and segments[-1]["state"] == evt["state"]:
+                    # Extend the current segment
+                    segments[-1]["endTime"] = time_str
+                else:
+                    segments.append({
+                        "state": evt["state"],
+                        "startTime": time_str,
+                        "endTime": time_str,
+                    })
+            # Calculate duration for each segment
+            for seg in segments:
+                start_parts = seg["startTime"].split(":")
+                end_parts = seg["endTime"].split(":")
+                start_min = int(start_parts[0]) * 60 + int(start_parts[1])
+                end_min = int(end_parts[0]) * 60 + int(end_parts[1])
+                seg["durationMin"] = max(end_min - start_min, 1)
+        else:
+            # No real data: create a single segment based on state.json
+            if state_updated_at and state_updated_at.strftime("%Y-%m-%d") == today_str:
+                start_time = state_updated_at.strftime("%H:%M")
+                end_time = now.strftime("%H:%M")
+                start_parts = start_time.split(":")
+                end_parts = end_time.split(":")
+                duration = max(
+                    (int(end_parts[0]) * 60 + int(end_parts[1]))
+                    - (int(start_parts[0]) * 60 + int(start_parts[1])),
+                    1,
+                )
+                segments.append({
+                    "state": current_state,
+                    "startTime": start_time,
+                    "endTime": end_time,
+                    "durationMin": duration,
+                })
+
+        total_active_min = sum(s.get("durationMin", 0) for s in segments)
+
+        return jsonify({
+            "ok": True,
+            "date": today_str,
+            "timeline": segments,
+            "totalActiveMin": total_active_min,
+            "currentState": current_state,
+        })
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -2259,13 +2377,27 @@ def stats_weekly():
     try:
         today = datetime.now().date()
         days = []
+        total_reports = 0
         for i in range(7):
             d = today - timedelta(days=i)
             date_str = d.strftime("%Y-%m-%d")
             memo_file = os.path.join(MEMORY_DIR, f"{date_str}.md")
+            # Count project-status report files for this date
+            report_count = 0
+            try:
+                if os.path.exists(MEMORY_DIR):
+                    prefix = f"project-status-{date_str}"
+                    report_count = sum(
+                        1 for fname in os.listdir(MEMORY_DIR)
+                        if fname.startswith(prefix) and fname.endswith(".md")
+                    )
+            except Exception:
+                pass
+            total_reports += report_count
             days.append({
                 "date": date_str,
                 "hasMemo": os.path.exists(memo_file),
+                "reportCount": report_count,
             })
         cron_health = {"total": 0, "healthy": 0, "errorRate": 0.0}
         try:
@@ -2285,7 +2417,12 @@ def stats_weekly():
                 }
         except Exception:
             pass
-        return jsonify({"ok": True, "days": days, "cronHealth": cron_health})
+        return jsonify({
+            "ok": True,
+            "days": days,
+            "totalReports": total_reports,
+            "cronHealth": cron_health,
+        })
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -2303,6 +2440,22 @@ def stats_heatmap():
         longest_streak = 0
         streak_counting = True
 
+        # Optionally scan OpenClaw cron run logs for extra activity signal
+        cron_counts_by_date = {}
+        try:
+            crons_dir = os.path.expanduser("~/.openclaw/crons/")
+            if os.path.isdir(crons_dir):
+                for fname in os.listdir(crons_dir):
+                    # Extract date from cron run filenames (various formats)
+                    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", fname)
+                    if date_match:
+                        d_str = date_match.group(1)
+                        cron_counts_by_date[d_str] = cron_counts_by_date.get(d_str, 0) + 1
+        except Exception:
+            pass
+
+        level_sum = 0
+
         for offset in range(90):
             d = today - timedelta(days=offset)
             date_str = d.strftime("%Y-%m-%d")
@@ -2317,7 +2470,9 @@ def stats_heatmap():
                     if f.startswith(prefix) and f.endswith(".md")
                 )
 
-            if not has_memo and report_count == 0:
+            cron_runs = cron_counts_by_date.get(date_str, 0)
+
+            if not has_memo and report_count == 0 and cron_runs == 0:
                 level = 0
             elif has_memo and report_count == 0:
                 level = 1
@@ -2330,12 +2485,18 @@ def stats_heatmap():
             else:
                 level = 1 if has_memo else (1 if report_count > 0 else 0)
 
+            # Boost level by 1 if cron runs detected but level was 0
+            if level == 0 and cron_runs > 0:
+                level = 1
+
             days.append({
                 "date": date_str,
                 "level": level,
                 "hasMemo": has_memo,
                 "reportCount": report_count,
             })
+
+            level_sum += level
 
             if level > 0:
                 total_active += 1
@@ -2356,12 +2517,28 @@ def stats_heatmap():
             else:
                 running_streak = 0
 
+        # Calculate week-over-week activity
+        this_week_active = sum(1 for d in days[:7] if d["level"] > 0)
+        last_week_active = sum(1 for d in days[7:14] if d["level"] > 0)
+        avg_level = round(level_sum / 90, 2) if len(days) == 90 else 0.0
+
+        summary = {
+            "totalDays": 90,
+            "activeDays": total_active,
+            "currentStreak": current_streak,
+            "longestStreak": longest_streak,
+            "avgLevel": avg_level,
+            "thisWeekActive": this_week_active,
+            "lastWeekActive": last_week_active,
+        }
+
         return jsonify({
             "ok": True,
             "days": days,
             "totalActiveDays": total_active,
             "currentStreak": current_streak,
             "longestStreak": longest_streak,
+            "summary": summary,
         })
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
