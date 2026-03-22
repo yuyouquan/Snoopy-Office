@@ -13,6 +13,8 @@ const SHORTCUT_MAP = {
   'n': { action: 'notifications', label: '通知面板' },
   'd': { action: 'drawer', label: '装修抽屉' },
   's': { action: 'share', label: '生成分享卡片' },
+  'f': { action: 'focus', label: '专注模式 开/关' },
+  'a': { action: 'sound', label: '环境音效面板' },
   '?': { action: 'help', label: '快捷键帮助' }
 };
 
@@ -104,6 +106,18 @@ function handleShortcut(e) {
     case 'share':
       if (typeof openShareCard === 'function') {
         openShareCard();
+      }
+      break;
+
+    case 'focus':
+      if (typeof focusToggle === 'function') {
+        focusToggle();
+      }
+      break;
+
+    case 'sound':
+      if (typeof toggleSoundPanel === 'function') {
+        toggleSoundPanel();
       }
       break;
 
