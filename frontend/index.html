@@ -1235,28 +1235,28 @@
                 </div>
                 <div id="agent-grid" style="display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:6px;flex-wrap:nowrap;"></div>
                 <!-- 定时任务面板 -->
-                <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                <div id="section-cron" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
                     <div style="color:#f59e0b;font-size:13px;font-weight:600;letter-spacing:0.5px;margin-bottom:8px;">⏰ 定时任务</div>
                     <div id="cron-jobs-panel" style="min-height:40px;">
                         <div style="color:#6b7280;font-size:11px;text-align:center;padding:8px;">加载中...</div>
                     </div>
                 </div>
                 <!-- 工作数据统计面板 -->
-                <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                <div id="section-stats" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
                     <div style="color:#a78bfa;font-size:13px;font-weight:600;letter-spacing:0.5px;margin-bottom:8px;">📊 工作数据</div>
                     <div id="stats-dashboard" style="min-height:40px;">
                         <div style="color:#6b7280;font-size:11px;text-align:center;padding:8px;">加载中...</div>
                     </div>
                 </div>
                 <!-- 工作热力图 -->
-                <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                <div id="section-heatmap" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
                     <div style="color:#39d353;font-size:13px;font-weight:600;letter-spacing:0.5px;margin-bottom:8px;">🟩 活跃热力图</div>
                     <div id="heatmap-container" style="min-height:40px;overflow-x:auto;">
                         <div style="color:#6b7280;font-size:11px;text-align:center;padding:8px;">加载中...</div>
                     </div>
                 </div>
                 <!-- 每日虾签 -->
-                <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                <div id="section-fortune" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                         <div style="color:#fbbf24;font-size:13px;font-weight:600;letter-spacing:0.5px;">🎋 每日虾签</div>
                         <div onclick="openShareCard()" style="color:#06b6d4;font-size:10px;cursor:pointer;border:1px solid #06b6d433;border-radius:4px;padding:2px 8px;">📸 分享卡片</div>
@@ -1265,17 +1265,17 @@
                     </div>
                 </div>
                 <!-- 每日目标 -->
-                <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                <div id="section-goals" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
                     <div style="color:#06b6d4;font-size:13px;font-weight:600;letter-spacing:0.5px;margin-bottom:8px;">📋 每日目标</div>
                     <div id="goals-container" style="min-height:40px;"></div>
                 </div>
                 <!-- 健康提醒 -->
-                <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                <div id="section-health" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
                     <div style="color:#22c55e;font-size:13px;font-weight:600;letter-spacing:0.5px;margin-bottom:8px;">🏃 健康助手</div>
                     <div id="health-container" style="min-height:40px;"></div>
                 </div>
                 <!-- 生产力周报 -->
-                <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                <div id="section-report" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
                     <div style="color:#e879f9;font-size:13px;font-weight:600;letter-spacing:0.5px;margin-bottom:8px;">📊 生产力洞察</div>
                     <div id="weekly-report-container" style="min-height:40px;"></div>
                 </div>
@@ -5029,6 +5029,7 @@ function toggleBrokerPanel() {
     <script src="/static/fortune.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/interactions.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/share-card.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/anchor-nav.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/focus-mode.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/ambient-sound.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/daily-goals.js?v={{VERSION_TIMESTAMP}}"></script>
