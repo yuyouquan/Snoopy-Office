@@ -34,6 +34,7 @@ function startHealthReminders() {
 function stopHealthReminders() {
   for (const key of Object.keys(healthState.timers)) {
     clearInterval(healthState.timers[key]);
+    clearTimeout(healthState.timers[key]);
   }
   healthState.timers = {};
 }

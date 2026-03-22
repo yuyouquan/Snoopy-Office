@@ -56,13 +56,11 @@ function handleShortcut(e) {
           pomodoroStart();
           showShortcutToast('番茄钟已开始');
         } else if (pomodoroState.intervalId) {
-          // Pause
-          clearInterval(pomodoroState.intervalId);
-          pomodoroState.intervalId = null;
+          if (typeof pomodoroPause === 'function') pomodoroPause();
           showShortcutToast('番茄钟已暂停');
         } else {
-          // Resume
-          pomodoroState.intervalId = setInterval(pomodoroTick, 1000);
+          if (typeof pomodoroResume === 'function') pomodoroResume();
+          else pomodoroStart();
           showShortcutToast('番茄钟已继续');
         }
       }

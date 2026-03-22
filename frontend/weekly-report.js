@@ -143,7 +143,8 @@ function analyzeProductivity(data) {
       energetic: '精力充沛', happy: '开心', focused: '专注',
       tired: '疲惫', creative: '灵感爆发', chill: '摸鱼中'
     };
-    insights.push({ emoji: '😊', text: `当前心情: ${moodLabels[mood.current] || mood.current}`, type: 'info' });
+    const moodDisplay = moodLabels[mood.current] || escapeReportHtml(String(mood.current));
+    insights.push({ emoji: '😊', text: `当前心情: ${moodDisplay}`, type: 'info' });
   }
 
   // Health analysis
@@ -240,6 +241,10 @@ function renderWeeklyReport() {
   }
 
   container.innerHTML = html;
+}
+
+function escapeReportHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ─── Init ──────────────────────────────────────────────────

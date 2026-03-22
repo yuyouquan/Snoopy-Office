@@ -188,6 +188,9 @@ function playAmbient(key) {
   const config = AMBIENT_SOUNDS[key];
   if (!config) return;
 
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+
   soundState.active = key;
   soundState.nodes = createNoiseGenerator(config.freq, config.type);
   updateSoundPanel();
@@ -200,6 +203,7 @@ function stopAmbient() {
   }
   soundState.nodes = [];
   soundState.active = null;
+  if (soundState.audioCtx) soundState.audioCtx.suspend();
   updateSoundPanel();
 }
 

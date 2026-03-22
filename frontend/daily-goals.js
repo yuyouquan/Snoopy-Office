@@ -2,6 +2,8 @@
 // 简单待办清单，可视化完成度，每日自动重置
 
 const GOALS_MAX = 8;
+let _goalIdCounter = Date.now();
+function nextGoalId() { return ++_goalIdCounter; }
 
 const goalsState = {
   date: '',
@@ -59,7 +61,7 @@ function addGoal(text) {
   const trimmed = (text || '').trim();
   if (!trimmed || goalsState.goals.length >= GOALS_MAX) return;
 
-  goalsState.goals = [...goalsState.goals, { text: trimmed, done: false, id: Date.now() }];
+  goalsState.goals = [...goalsState.goals, { text: trimmed, done: false, id: nextGoalId() }];
   goalsState.date = new Date().toISOString().slice(0, 10);
   saveGoals();
   renderGoalsPanel();
