@@ -54,7 +54,19 @@ function addNotification(type, title, detail) {
   if (document.visibilityState === 'hidden' && 'Notification' in window) {
     if (!notifState.permissionRequested) {
       notifState.permissionRequested = true;
-      Notification.requestPermission();
+      // Check if already granted from prior session
+      if (Notification.permission === 'granted') {
+        new Notification(typeDef.icon + ' ' + title, { body: detail || '' });
+      } else if (Notification.permission !== 'denied') {
+        // Request permission and resend on grant
+        var titleCopy = typeDef.icon + ' ' + title;
+        var bodyCopy = detail || '';
+        Notification.requestPermission().then(function(perm) {
+          if (perm === 'granted') {
+            new Notification(titleCopy, { body: bodyCopy });
+          }
+        });
+      }
     } else if (Notification.permission === 'granted') {
       new Notification(typeDef.icon + ' ' + title, { body: detail || '' });
     }

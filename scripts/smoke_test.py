@@ -24,6 +24,9 @@ REQUIRED_ENDPOINTS = [
     ("GET", "/status", 200),
     ("GET", "/agents", 200),
     ("GET", "/yesterday-memo", 200),
+    ("GET", "/stats/today-timeline", 200),
+    ("GET", "/stats/weekly", 200),
+    ("GET", "/memo/list", 200),
 ]
 
 

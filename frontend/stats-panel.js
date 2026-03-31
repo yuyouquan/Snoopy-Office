@@ -66,7 +66,7 @@ function injectStatsStyles() {
     .sp-health-ring{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative}
     .sp-health-pct{font-size:14px;font-weight:bold}
     .sp-health-info{flex:1}
-    .sp-health-bar{height:4px;border-radius:2px;background:#1f2937;overflow:hidden;margin-top:4px}
+    .sp-health-bar{height:4px;border-radius:2px;background:#1f2937;overflow:hidden;margin-top:4px;display:flex;}
     .sp-lb-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:#d1d5db}
     .sp-lb-row:hover{background:rgba(255,255,255,0.03);border-radius:4px}
     .sp-lb-rank{width:18px;text-align:center;font-size:12px}
@@ -275,7 +275,37 @@ function renderCronHealth(el) {
   html += '</div>';
   html += '</div></div>';
 
+  // Placeholder for 7-day trend mini
+  html += '<div id="sp-cron-trend-mini" style="margin-top:6px;"></div>';
+
   html += '</div>';
+  el.innerHTML = html;
+}
+
+// ─── Cron 7-day Trend Mini ───────────────────────────────────
+function renderCronTrendMini(el, weeklyData) {
+  if (!el) return;
+
+  const days = (weeklyData && weeklyData.cron_stats) || [];
+
+  let html = '';
+  if (days.length === 0) {
+    // No historical data available
+    html = '<div style="font-size:9px;color:#6b7280;margin-bottom:3px;">7日成功率趋势</div>';
+    html += '<div style="color:#4b5563;font-size:9px;padding:6px 0;">暂无7日历史数据</div>';
+  } else {
+    // Render from weekly data if available
+    html = '<div style="font-size:9px;color:#6b7280;margin-bottom:3px;">7日成功率趋势</div>';
+    html += '<div style="display:flex;gap:3px;">';
+    for (let i = 0; i < Math.min(7, days.length); i++) {
+      const day = days[i];
+      const rate = (day.ok_count / Math.max(1, day.ok_count + day.err_count)) || 0;
+      const color = rate >= 0.9 ? '#22c55e' : rate >= 0.7 ? '#eab308' : rate >= 0.5 ? '#f59e0b' : '#ef4444';
+      html += `<div style="flex:1;height:8px;border-radius:2px;background:${color};" title="${day.date || ''} ${Math.round(rate * 100)}%"></div>`;
+    }
+    html += '</div>';
+  }
+
   el.innerHTML = html;
 }
 
@@ -302,7 +332,9 @@ function renderAgentLeaderboard(el) {
   const sorted = [...agents]
     .map(a => ({
       ...a,
-      _tokens: (a.totalInputTokens || 0) + (a.totalOutputTokens || 0) + (a.totalTokens || 0)
+      _tokens: (a.totalInputTokens !== undefined && a.totalOutputTokens !== undefined)
+        ? (a.totalInputTokens || 0) + (a.totalOutputTokens || 0)
+        : (a.totalTokens || 0)
     }))
     .filter(a => a._tokens > 0)
     .sort((a, b) => b._tokens - a._tokens)
@@ -364,6 +396,10 @@ async function fetchAndRenderStats() {
     document.getElementById('stats-weekly'),
     wData && wData.ok ? wData.days : null
   );
+
+  // Update Cron trend mini with weekly data if available
+  const trendEl = document.getElementById('sp-cron-trend-mini');
+  renderCronTrendMini(trendEl, wData && wData.ok ? wData : null);
 }
 
 function refreshStatsPanel() {

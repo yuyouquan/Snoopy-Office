@@ -317,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDayNightCycle();
     createCoffeeSteam();
 
-    // Update day/night every 5 minutes
-    setInterval(updateDayNightCycle, 300000);
+    // Update day/night every 1 minute
+    setInterval(updateDayNightCycle, 60000);
   }, 3000);
 });
