@@ -226,7 +226,7 @@ function renderWeeklyChart(el, days) {
 
 function renderCronHealth(el) {
   if (!el) return;
-  const data = (typeof openclawData !== 'undefined') ? openclawData : null;
+  const data = (typeof window.openclawData !== 'undefined' && window.openclawData) ? window.openclawData : null;
 
   let html = '<div class="sp-section">';
   html += '<div class="sp-title">⏰ <b>Cron 健康度</b></div>';
@@ -313,7 +313,7 @@ function renderCronTrendMini(el, weeklyData) {
 
 function renderAgentLeaderboard(el) {
   if (!el) return;
-  const data = (typeof openclawData !== 'undefined') ? openclawData : null;
+  const data = (typeof window.openclawData !== 'undefined' && window.openclawData) ? window.openclawData : null;
   const agents = (data && data.agentDetails) ? data.agentDetails : [];
 
   let html = '<div class="sp-section">';
@@ -371,6 +371,20 @@ async function fetchAndRenderStats() {
       const div = document.createElement('div');
       div.id = id;
       dashboard.appendChild(div);
+    }
+  }
+
+  // Ensure openclawData is initialized (for Cron health rendering)
+  if (typeof window.openclawData === 'undefined' || !window.openclawData) {
+    try {
+      const base = statsGetApiBase();
+      const resp = await fetch(base + '/openclaw/status?t=' + Date.now(), { cache: 'no-store' });
+      const data = await resp.json();
+      if (data.ok) {
+        window.openclawData = data;
+      }
+    } catch (e) {
+      console.error('Failed to initialize openclawData:', e);
     }
   }
 
