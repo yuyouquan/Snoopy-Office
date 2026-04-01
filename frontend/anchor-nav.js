@@ -101,11 +101,19 @@ function setupAnchorObserver() {
   };
 
   anchorState.observer = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (entry.isIntersecting) {
-        highlightAnchorItem(entry.target.id);
-      }
-    }
+    // When multiple sections are visible, highlight the one closest to viewport top
+    const intersectingEntries = entries.filter(e => e.isIntersecting);
+    if (intersectingEntries.length === 0) return;
+
+    // Select entry with smallest positive top offset (closest to top)
+    const topmost = intersectingEntries.reduce((closest, entry) => {
+      const rect = entry.target.getBoundingClientRect();
+      const closestRect = closest.target.getBoundingClientRect();
+      const isEntryCloser = rect.top >= 0 && (closestRect.top < 0 || rect.top < closestRect.top);
+      return isEntryCloser ? entry : closest;
+    });
+
+    highlightAnchorItem(topmost.target.id);
   }, options);
 
   for (const section of ANCHOR_SECTIONS) {
