@@ -85,11 +85,11 @@ function handleShortcut(e) {
     case 'drawer': {
       const drawer = document.getElementById('asset-drawer');
       if (drawer) {
-        const isOpen = drawer.style.transform === 'translateX(0px)' ||
-                       drawer.style.right === '0px' ||
-                       drawer.classList.contains('open');
+        // Unified state check: use classList which is the canonical source
+        const isOpen = drawer.classList.contains('open');
         if (typeof toggleAssetDrawer === 'function') {
           toggleAssetDrawer();
+          showShortcutToast(isOpen ? 'Drawer已关闭' : 'Drawer已打开');
         } else {
           // Fallback: try clicking the drawer toggle button
           const btn = document.querySelector('[onclick*="toggleAssetDrawer"]') ||
