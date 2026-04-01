@@ -4587,8 +4587,8 @@ function toggleBrokerPanel() {
                 coordsOverlay.style.top = (pointer.y + 18) + 'px';
             });
 
-            // 加载昨日 memo
-            loadMemo();
+            // 日记加载由 memo-browser.js 接管（支持日期翻页功能）
+            // loadMemo();
 
             fetchStatus();
             fetchGuestAgents();

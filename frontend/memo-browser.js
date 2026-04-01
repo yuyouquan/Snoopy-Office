@@ -221,6 +221,7 @@ async function initMemoBrowser() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Delay to let existing loadMemo() run first, then enhance
-  setTimeout(initMemoBrowser, 2000);
+  // Initialize memo browser with date navigation support
+  // Short delay to ensure DOM is fully ready
+  setTimeout(initMemoBrowser, 300);
 });
