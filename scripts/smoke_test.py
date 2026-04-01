@@ -19,14 +19,14 @@ import urllib.request
 
 
 REQUIRED_ENDPOINTS = [
-    ("GET", "/", 200),
-    ("GET", "/health", 200),
-    ("GET", "/status", 200),
-    ("GET", "/agents", 200),
-    ("GET", "/yesterday-memo", 200),
-    ("GET", "/stats/today-timeline", 200),
-    ("GET", "/stats/weekly", 200),
-    ("GET", "/memo/list", 200),
+    ("GET", "/", 200, None),                                    # HTML page
+    ("GET", "/health", 200, None),                              # JSON health status
+    ("GET", "/status", 200, None),                              # JSON status
+    ("GET", "/agents", 200, None),                              # JSON array
+    ("GET", "/yesterday-memo", 200, {"success": True}),         # Validate success field
+    ("GET", "/stats/today-timeline", 200, {"ok": True}),        # Validate ok field
+    ("GET", "/stats/weekly", 200, {"ok": True}),                # Validate ok field
+    ("GET", "/memo/list", 200, {"ok": True}),                   # Validate ok field
 ]
 
 
@@ -62,12 +62,26 @@ def main() -> int:
     failures: list[str] = []
     print(f"[smoke] base={base}")
 
-    for method, path, expected in REQUIRED_ENDPOINTS:
+    for endpoint in REQUIRED_ENDPOINTS:
+        method, path, expected_code = endpoint[0], endpoint[1], endpoint[2]
+        validate_fields = endpoint[3] if len(endpoint) > 3 else None
+
         code, body = req(method, base + path, token=token)
-        if code != expected:
-            failures.append(f"{method} {path}: expected {expected}, got {code}, body={body[:200]}")
+        if code != expected_code:
+            failures.append(f"{method} {path}: expected {expected_code}, got {code}")
         else:
-            print(f"  OK  {method} {path} -> {code}")
+            # Validate JSON fields if specified
+            if validate_fields:
+                try:
+                    data = json.loads(body)
+                    for key, expected_val in validate_fields.items():
+                        if data.get(key) != expected_val:
+                            failures.append(f"{method} {path}: expected {key}={expected_val}, got {data.get(key)}")
+                except json.JSONDecodeError as e:
+                    failures.append(f"{method} {path}: invalid JSON response - {str(e)[:100]}")
+
+            if not failures or failures[-1] not in [f for f in failures if path in f]:
+                print(f"  OK  {method} {path} -> {code}")
 
     # non-destructive state update probe
     code, body = req("POST", base + "/set_state", {"state": "idle", "detail": "smoke-check"}, token=token)
