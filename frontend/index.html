@@ -3568,7 +3568,23 @@ function toggleBrokerPanel() {
             }).join('');
         }
 
-        function getAreaRect(area) {
+        // 角色工位区域定义 (1280x720 canvas)
+        const ROLE_ZONE_RECTS = {
+            'architect':        { x1:  80, y1: 140, x2: 220, y2: 260 },
+            'frontend-dev':     { x1: 230, y1: 140, x2: 420, y2: 260 },
+            'backend-dev':      { x1: 430, y1: 140, x2: 580, y2: 260 },
+            'product-manager':  { x1: 820, y1: 360, x2: 970, y2: 480 },
+            'project-manager':  { x1: 980, y1: 360, x2: 1130, y2: 480 },
+            'qa-engineer':      { x1:1050, y1: 240, x2: 1200, y2: 360 },
+            'news-miner':       { x1: 830, y1: 510, x2: 980, y2: 630 },
+            'daily-reporter':   { x1: 990, y1: 510, x2: 1140, y2: 630 },
+            'security-expert':  { x1:1140, y1: 510, x2: 1280, y2: 640 }
+        };
+        window.ROLE_ZONE_RECTS = ROLE_ZONE_RECTS;
+
+        function getAreaRect(areaOrRole) {
+            // 优先查询角色工位，其次使用通用区域
+            if (ROLE_ZONE_RECTS[areaOrRole]) return ROLE_ZONE_RECTS[areaOrRole];
             // 区域坐标（海辛提供，左上-右下；这里的 x/y 作为 sprite 底部锚点坐标来用）
             // 休息区域范围（511,262）（841,621）
             // 工作区域范围（190,526）（380,683）
@@ -3578,7 +3594,7 @@ function toggleBrokerPanel() {
                 writing:   { x1: 190, y1: 526, x2: 380, y2: 683 },
                 error:     { x1: 932, y1: 275, x2: 1109, y2: 327 }
             };
-            return rects[area] || rects.breakroom;
+            return rects[areaOrRole] || rects.breakroom;
         }
 
         function randomInt(min, max) {
@@ -3589,7 +3605,21 @@ function toggleBrokerPanel() {
             return { x: randomInt(rect.x1, rect.x2), y: randomInt(rect.y1, rect.y2) };
         }
 
-        function getAreaPoint(area, idx) {
+        function getAreaPoint(areaOrRole, idx) {
+            // 角色工位：生成均匀分布的 6 个固定位置
+            if (ROLE_ZONE_RECTS[areaOrRole]) {
+                const r = ROLE_ZONE_RECTS[areaOrRole];
+                const w = r.x2 - r.x1;
+                const h = r.y2 - r.y1;
+                const slots = [];
+                for (let i = 0; i < 6; i++) {
+                    slots.push({
+                        x: r.x1 + Math.round(w / 7 * (i + 1)),
+                        y: r.y1 + Math.round(h * 0.75)
+                    });
+                }
+                return slots[idx % slots.length];
+            }
             // 非 demo 访客：仍用固定点位，避免每次轮询都抖动。
             const map = {
                 breakroom: [
@@ -3623,8 +3653,16 @@ function toggleBrokerPanel() {
                     { x: 940, y: 310 }
                 ]
             };
-            const arr = map[area] || map.breakroom;
+            const arr = map[areaOrRole] || map.breakroom;
             return arr[idx % arr.length];
+        }
+
+        function getRoleForAgent(agentId) {
+            // Star 主角色保持在原有区域
+            if (agentId === 'star' || agentId === 'main') return null;
+            // 如果 agentId 本身就是角色 key
+            if (ROLE_ZONE_RECTS[agentId]) return agentId;
+            return null;
         }
 
         function renderGuestAgentsInScene() {
@@ -3632,18 +3670,32 @@ function toggleBrokerPanel() {
             const visitors = getMergedVisitors();
             const seenIds = new Set();
             let idxBreak = 0, idxWrite = 0, idxError = 0;
+            const roleIdxMap = {};  // 角色工位的独立计数器
 
             visitors.forEach(agent => {
                 const id = agent.agentId;
                 seenIds.add(id);
 
                 const isDemo = !!agent.isDemo || (DEMO_MODE && (id === 'demo_nika' || id === 'demo_mercury' || agent.name === '尼卡' || agent.name === '水星'));
-                const area = agent.area || (agent.state === 'error' ? 'error' : (agent.state === 'idle' ? 'breakroom' : 'writing'));
 
-                const idx = area === 'breakroom' ? idxBreak++ : area === 'error' ? idxError++ : idxWrite++;
+                // 角色路由：优先分配到专属工位，否则使用状态推导
+                const role = getRoleForAgent(id);
+                const zoneKey = role
+                    || agent.area
+                    || (agent.state === 'error' ? 'error' : (agent.state === 'idle' ? 'breakroom' : 'writing'));
+
+                let idx;
+                if (ROLE_ZONE_RECTS[zoneKey]) {
+                    // 角色工位：使用独立的计数器
+                    roleIdxMap[zoneKey] = (roleIdxMap[zoneKey] || 0);
+                    idx = roleIdxMap[zoneKey]++;
+                } else {
+                    // 通用区域：使用原有的计数器
+                    idx = zoneKey === 'breakroom' ? idxBreak++ : zoneKey === 'error' ? idxError++ : idxWrite++;
+                }
                 const p = isDemo
-                    ? randomPointInRect(getAreaRect(area))
-                    : getAreaPoint(area, idx);
+                    ? randomPointInRect(getAreaRect(zoneKey))
+                    : getAreaPoint(zoneKey, idx);
 
                 if (!guestSprites[id]) {
                     // 优先用图标：demo visitor 有专门映射
@@ -4141,6 +4193,69 @@ function toggleBrokerPanel() {
             this.load.spritesheet('guest_anim_6', '/static/guest_anim_6.webp?v={{VERSION_TIMESTAMP}}', { frameWidth: 32, frameHeight: 32 });
         }
 
+        function drawWorkstationZones(scene) {
+            const ROLE_ZONE_LABELS = {
+                'architect':       '🏗️ 架构区',
+                'frontend-dev':    '🎨 前端区',
+                'backend-dev':     '⚙️ 后端区',
+                'product-manager': '📋 产品区',
+                'project-manager': '📊 项目区',
+                'qa-engineer':     '🧪 测试区',
+                'news-miner':      '📰 资讯区',
+                'daily-reporter':  '📝 日报区',
+                'security-expert': '🔒 安全区'
+            };
+
+            Object.entries(ROLE_ZONE_RECTS).forEach(([role, rect]) => {
+                if (!ROLE_ZONE_LABELS[role]) return;
+                const cx = (rect.x1 + rect.x2) / 2;
+                const cy = rect.y1 + 16;
+                const label = scene.add.text(cx, cy, ROLE_ZONE_LABELS[role], {
+                    fontFamily: 'ArkPixel, monospace',
+                    fontSize: '11px',
+                    fill: '#ffffff',
+                    stroke: '#000',
+                    strokeThickness: 1
+                }).setOrigin(0.5).setDepth(5).setAlpha(0.6);
+
+                const g = scene.add.graphics().setDepth(3);
+                g.lineStyle(1, 0x334155, 0.3);
+                g.strokeRect(rect.x1, rect.y1, rect.x2 - rect.x1, rect.y2 - rect.y1);
+            });
+        }
+
+        function addWorkstationClickZones(scene) {
+            window._wzGraphics = {};
+            Object.entries(ROLE_ZONE_RECTS).forEach(([role, rect]) => {
+                const w = rect.x2 - rect.x1;
+                const h = rect.y2 - rect.y1;
+                const hitArea = scene.add.rectangle(
+                    rect.x1 + w/2, rect.y1 + h/2, w, h, 0xffffff, 0
+                ).setInteractive({ useHandCursor: true }).setDepth(2);
+
+                const highlightGraphics = scene.add.graphics().setDepth(8);
+                window._wzGraphics[role] = highlightGraphics;
+
+                hitArea.on('pointerdown', () => {
+                    if (typeof showWorkstationPopup === 'function') {
+                        showWorkstationPopup(role);
+                    }
+                });
+
+                hitArea.on('pointerover', () => {
+                    if (typeof highlightWorkstationZone === 'function') {
+                        highlightWorkstationZone(role, true);
+                    }
+                });
+
+                hitArea.on('pointerout', () => {
+                    if (typeof highlightWorkstationZone === 'function') {
+                        highlightWorkstationZone(role, false);
+                    }
+                });
+            });
+        }
+
         function create() {
             game = this;
             hideGameSkeleton();
@@ -4590,6 +4705,12 @@ function toggleBrokerPanel() {
             // 日记加载由 memo-browser.js 接管（支持日期翻页功能）
             // loadMemo();
 
+            // 初始化角色工位可视化
+            if (typeof ROLE_ZONE_RECTS !== 'undefined') {
+                drawWorkstationZones(this);
+                addWorkstationClickZones(this);
+            }
+
             fetchStatus();
             fetchGuestAgents();
         }
@@ -5026,6 +5147,7 @@ function toggleBrokerPanel() {
     <script src="/static/export-report.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/cron-history.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/analytics-dashboard.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/workstations.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/weekly-report.js?v={{VERSION_TIMESTAMP}}"></script>
 </body>
 </html>

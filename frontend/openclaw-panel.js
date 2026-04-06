@@ -136,7 +136,7 @@ function renderAgentCard(agent) {
     ? `width:8px;height:8px;border-radius:50%;background:${color};box-shadow:0 0 6px ${color};animation:ocPulse 1.5s infinite;`
     : `width:8px;height:8px;border-radius:50%;background:${color};`;
 
-  let html = `<div class="agent-card" style="background:${bgColor};border:1px solid ${borderColor}33;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;transition:border-color 0.2s;min-width:160px;max-width:200px;flex-shrink:0;overflow:hidden;" onmouseenter="this.style.borderColor='${borderColor}88'" onmouseleave="this.style.borderColor='${borderColor}33'">`;
+  let html = `<div class="agent-card" data-role="${agent.agentId}" style="background:${bgColor};border:1px solid ${borderColor}33;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;transition:border-color 0.2s;min-width:160px;max-width:200px;flex-shrink:0;overflow:hidden;cursor:pointer;" onmouseenter="this.style.borderColor='${borderColor}88'" onmouseleave="this.style.borderColor='${borderColor}33'" onclick="typeof focusWorkstationZone==='function'&&focusWorkstationZone('${agent.agentId}')">`;
 
   // Header: emoji + name + status dot
   html += `<div style="display:flex;align-items:center;gap:6px;">`;

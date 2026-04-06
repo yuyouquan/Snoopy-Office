@@ -347,7 +347,7 @@ function renderAgentLeaderboard(el) {
     const rank = i < 3 ? rankIcons[i] : `<span style="color:#4b5563;">${i + 1}</span>`;
     const statusDot = a.status === 'active' ? '🟢' : a.status === 'idle' ? '🟡' : '';
 
-    html += '<div class="sp-lb-row">';
+    html += `<div class="sp-lb-row" data-role="${a.agentId}" style="cursor:pointer;" onclick="typeof focusWorkstationZone==='function'&&focusWorkstationZone('${a.agentId}')">`;
     html += `<span class="sp-lb-rank">${rank}</span>`;
     html += `<span>${a.emoji || '🤖'}</span>`;
     html += `<span class="sp-lb-name">${a.name || 'Unknown'} ${statusDot}</span>`;
