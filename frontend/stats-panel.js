@@ -414,6 +414,11 @@ async function fetchAndRenderStats() {
   // Update Cron trend mini with weekly data if available
   const trendEl = document.getElementById('sp-cron-trend-mini');
   renderCronTrendMini(trendEl, wData && wData.ok ? wData : null);
+
+  // 效率积分: 刷新今日评分
+  if (typeof refreshProductivityScore === 'function') {
+    refreshProductivityScore();
+  }
 }
 
 function refreshStatsPanel() {

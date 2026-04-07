@@ -23,6 +23,10 @@ async function fetchOpenClawStatus() {
       if (typeof detectAgentChanges === 'function') detectAgentChanges(data.agentDetails || []);
       // 统计面板: 刷新数据
       if (typeof refreshStatsPanel === 'function') refreshStatsPanel();
+      // 天气系统: 更新粒子效果
+      if (typeof updateWeather === 'function') updateWeather(data.cronJobs || []);
+      // 活动墙: 刷新 Agent 动态
+      if (typeof refreshActivityWall === 'function') refreshActivityWall();
       const dot = document.getElementById('openclaw-conn-dot');
       if (dot) dot.style.background = '#22c55e';
     }
