@@ -101,6 +101,14 @@ function showWorkstationPopup(role) {
                 <span>🪙 ${tokens} tokens</span>
             </div>
         `;
+
+        // 添加等级详情（如果 renderLevelDetail 函数可用）
+        if (typeof renderLevelDetail === 'function') {
+            const levelDetail = renderLevelDetail(agent);
+            if (levelDetail) {
+                statusHtml += levelDetail;
+            }
+        }
     }
 
     popup.innerHTML = `

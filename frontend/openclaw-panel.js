@@ -27,6 +27,8 @@ async function fetchOpenClawStatus() {
       if (typeof updateWeather === 'function') updateWeather(data.cronJobs || []);
       // 活动墙: 刷新 Agent 动态
       if (typeof refreshActivityWall === 'function') refreshActivityWall();
+      // 任务看板: 刷新任务流转
+      if (typeof refreshTaskKanban === 'function') refreshTaskKanban();
       const dot = document.getElementById('openclaw-conn-dot');
       if (dot) dot.style.background = '#22c55e';
     }
@@ -142,7 +144,7 @@ function renderAgentCard(agent) {
 
   let html = `<div class="agent-card" data-role="${agent.agentId}" style="background:${bgColor};border:1px solid ${borderColor}33;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;transition:border-color 0.2s;min-width:160px;max-width:200px;flex-shrink:0;overflow:hidden;cursor:pointer;" onmouseenter="this.style.borderColor='${borderColor}88'" onmouseleave="this.style.borderColor='${borderColor}33'" onclick="typeof focusWorkstationZone==='function'&&focusWorkstationZone('${agent.agentId}')">`;
 
-  // Header: emoji + name + status dot
+  // Header: emoji + name + level badge + status dot
   html += `<div style="display:flex;align-items:center;gap:6px;">`;
   html += `<span style="font-size:18px;">${agent.emoji}</span>`;
   html += `<div style="flex:1;min-width:0;">`;
@@ -151,6 +153,11 @@ function renderAgentCard(agent) {
     html += `<div style="color:#06b6d4;font-size:9px;letter-spacing:0.5px;">ORCHESTRATOR</div>`;
   }
   html += `</div>`;
+  // 等级徽章
+  const levelBadge = typeof renderLevelBadge === 'function' ? renderLevelBadge(agent) : '';
+  if (levelBadge) {
+    html += levelBadge;
+  }
   html += `<div style="${dotStyle}" title="${label}"></div>`;
   html += `</div>`;
 

@@ -1278,6 +1278,11 @@
                     <div style="color:#06b6d4;font-size:13px;font-weight:600;letter-spacing:0.5px;margin-bottom:8px;">👥 团队动态</div>
                     <div id="activity-wall-container" style="min-height:60px;max-height:200px;overflow-y:auto;border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:4px;"></div>
                 </div>
+                <!-- 任务看板 -->
+                <div id="section-task-kanban" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+                    <div style="color:#f59e0b;font-size:13px;font-weight:600;letter-spacing:0.5px;margin-bottom:8px;">📋 任务看板</div>
+                    <div id="task-kanban-container" style="min-height:60px;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -5157,10 +5162,12 @@ function toggleBrokerPanel() {
     <script src="/static/export-report.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/cron-history.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/analytics-dashboard.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/agent-level.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/workstations.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/weekly-report.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/weather.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/productivity-score.js?v={{VERSION_TIMESTAMP}}"></script>
     <script src="/static/activity-wall.js?v={{VERSION_TIMESTAMP}}"></script>
+    <script src="/static/task-kanban.js?v={{VERSION_TIMESTAMP}}"></script>
 </body>
 </html>
