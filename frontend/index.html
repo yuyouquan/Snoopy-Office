@@ -1117,6 +1117,43 @@
                 min-height: 36px;
             }
         }
+        /* 任务看板样式 */
+        #task-kanban-container {
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        /* 任务卡片进入动画 */
+        @keyframes slideInFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        #task-kanban-container > div > div > div {
+            animation: slideInFadeIn 0.3s ease-out;
+        }
+        /* 颜色和设计系统常量 */
+        :root {
+            --color-primary-indigo: #6366f1;
+            --color-primary-violet: #8b5cf6;
+            --color-primary-purple: #a78bfa;
+            --color-primary-fuchsia: #c084fc;
+            --color-primary-magenta: #d946ef;
+            --color-success: #22c55e;
+            --color-warning: #f59e0b;
+            --color-error: #ef4444;
+            --color-info: #06b6d4;
+            --color-text-primary: #e5e7eb;
+            --color-text-secondary: #9ca3af;
+            --color-text-tertiary: #6b7280;
+            --color-text-disabled: #4b5563;
+            --color-bg-overlay: rgba(255,255,255,0.03);
+            --color-border-subtle: rgba(255,255,255,0.08);
+        }
     </style>
 </head>
 <body>

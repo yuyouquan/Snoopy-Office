@@ -2,25 +2,50 @@
 // 三列看板展示任务流转：即将执行 / 最近运行 / 已完成
 
 const TaskKanban = (() => {
-  // 状态图标
-  const STATUS_ICONS = {
-    ok: '✅',
-    error: '❌',
-    running: '⚙️',
-    pending: '⏰'
+  // Agent 元数据缓存
+  const AGENT_META_CACHE = {};
+
+  // 状态映射（图标 + 颜色 + 文本）
+  const STATUS_MAP = {
+    ok: { icon: '✅', color: '#22c55e', text: '成功' },
+    error: { icon: '❌', color: '#ef4444', text: '失败' },
+    running: { icon: '⚙️', color: '#f59e0b', text: '执行中' },
+    pending: { icon: '⏰', color: '#06b6d4', text: '待执行' }
   };
 
-  const STATUS_COLORS = {
-    ok: '#22c55e',
-    error: '#ef4444',
-    running: '#f59e0b',
-    pending: '#06b6d4'
+  const AGENT_META = {
+    'main': { name: '主控', emoji: '🧠' },
+    'architect': { name: '架构师', emoji: '🏗️' },
+    'frontend-dev': { name: '前端', emoji: '🎨' },
+    'backend-dev': { name: '后端', emoji: '⚙️' },
+    'product-manager': { name: '产品', emoji: '📋' },
+    'project-manager': { name: '项目', emoji: '📊' },
+    'qa-engineer': { name: '测试', emoji: '🧪' },
+    'news-miner': { name: '新闻', emoji: '📰' },
+    'daily-reporter': { name: '日报', emoji: '📝' },
+    'security-expert': { name: '安全', emoji: '🔒' }
   };
+
+  // 样式常量
+  const STYLES = {
+    columnHeader: 'font-size:11px;font-weight:600;margin-bottom:8px;padding:0 4px;',
+    card: 'min-width:200px;max-width:220px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;',
+    cardName: 'font-size:11px;font-weight:600;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',
+    cardMeta: 'display:flex;align-items:center;gap:4px;font-size:10px;',
+    cardFooter: 'display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#6b7280;border-top:1px solid rgba(255,255,255,0.05);padding-top:6px;'
+  };
+
+  // 获取 Agent 的显示名称和 emoji（带缓存）
+  function getAgentInfo(agentId) {
+    if (!AGENT_META_CACHE[agentId]) {
+      AGENT_META_CACHE[agentId] = AGENT_META[agentId] || { name: agentId, emoji: '🤖' };
+    }
+    return AGENT_META_CACHE[agentId];
+  }
 
   // 格式化时间为相对时间
   function formatRelativeTime(isoDateStr) {
     if (!isoDateStr) return '未知';
-
     const now = new Date();
     const then = new Date(isoDateStr);
     const diffMs = now - then;
@@ -29,9 +54,9 @@ const TaskKanban = (() => {
     const diffDay = Math.floor(diffMs / 86400000);
 
     if (diffMin < 1) return '刚刚';
-    if (diffMin < 60) return `${diffMin} 分钟前`;
-    if (diffHour < 24) return `${diffHour} 小时前`;
-    if (diffDay < 7) return `${diffDay} 天前`;
+    if (diffMin < 60) return `${diffMin}分钟前`;
+    if (diffHour < 24) return `${diffHour}小时前`;
+    if (diffDay < 7) return `${diffDay}天前`;
     return '更早';
   }
 
@@ -39,78 +64,41 @@ const TaskKanban = (() => {
   function formatDuration(ms) {
     if (!ms) return '-';
     const sec = Math.round(ms / 1000);
-    if (sec < 60) return `${sec}s`;
-    const min = Math.round(sec / 60);
-    return `${min}m`;
-  }
-
-  // 获取 Agent 的显示名称和 emoji
-  function getAgentInfo(agentId) {
-    const agentMeta = {
-      'main': { name: '主控', emoji: '🧠' },
-      'architect': { name: '架构师', emoji: '🏗️' },
-      'frontend-dev': { name: '前端', emoji: '🎨' },
-      'backend-dev': { name: '后端', emoji: '⚙️' },
-      'product-manager': { name: '产品', emoji: '📋' },
-      'project-manager': { name: '项目', emoji: '📊' },
-      'qa-engineer': { name: '测试', emoji: '🧪' },
-      'news-miner': { name: '新闻', emoji: '📰' },
-      'daily-reporter': { name: '日报', emoji: '📝' },
-      'security-expert': { name: '安全', emoji: '🔒' }
-    };
-    return agentMeta[agentId] || { name: agentId, emoji: '🤖' };
+    return sec < 60 ? `${sec}s` : `${Math.round(sec / 60)}m`;
   }
 
   // 构建任务卡片 HTML
   function renderTaskCard(task, type) {
     if (!task) return '';
 
-    const agentInfo = getAgentInfo(task.agentId);
-    let statusIcon = '⏰';
-    let statusColor = '#06b6d4';
-    let statusText = '待执行';
-
+    // 确定状态信息
+    let statusInfo = STATUS_MAP.pending;
     if (type === 'running') {
-      if (task.status === 'running') {
-        statusIcon = '⚙️';
-        statusColor = '#f59e0b';
-        statusText = '执行中';
-      } else {
-        statusIcon = STATUS_ICONS[task.lastStatus] || '❓';
-        statusColor = STATUS_COLORS[task.lastStatus] || '#6b7280';
-        statusText = task.lastStatus === 'ok' ? '成功' : task.lastStatus === 'error' ? '失败' : '待定';
-      }
+      statusInfo = task.status === 'running'
+        ? STATUS_MAP.running
+        : STATUS_MAP[task.lastStatus] || STATUS_MAP.pending;
     } else if (type === 'completed') {
-      statusIcon = task.lastStatus === 'ok' ? '✅' : '❌';
-      statusColor = task.lastStatus === 'ok' ? '#22c55e' : '#ef4444';
-      statusText = task.lastStatus === 'ok' ? '成功' : '失败';
+      statusInfo = STATUS_MAP[task.lastStatus] || STATUS_MAP.pending;
     }
 
-    const duration = task.lastDurationMs ? formatDuration(task.lastDurationMs) : '-';
+    const agentInfo = getAgentInfo(task.agentId);
+    const duration = formatDuration(task.lastDurationMs);
     const time = type === 'upcoming'
       ? new Date(task.nextRunAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
       : formatRelativeTime(task.timestamp || task.lastRunAt);
 
-    let html = `<div style="min-width:200px;max-width:220px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;">`;
-
-    // 任务名（截断）
-    html += `<div style="font-size:11px;font-weight:600;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${task.name}">${task.name}</div>`;
-
-    // Agent 和状态
-    html += `<div style="display:flex;align-items:center;gap:4px;font-size:10px;">`;
-    html += `<span>${agentInfo.emoji}</span>`;
-    html += `<span style="color:#9ca3af;flex:1;">${agentInfo.name}</span>`;
-    html += `<span style="color:${statusColor};font-weight:600;">${statusIcon}</span>`;
-    html += `</div>`;
-
-    // 时间和耗时
-    html += `<div style="display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#6b7280;border-top:1px solid rgba(255,255,255,0.05);padding-top:6px;">`;
-    html += `<span title="${type === 'upcoming' ? '下次运行' : '执行时间'}">${time}</span>`;
-    html += `<span title="耗时">${duration}</span>`;
-    html += `</div>`;
-
-    html += `</div>`;
-    return html;
+    return `<div style="${STYLES.card}">
+      <div style="${STYLES.cardName}" title="${task.name}">${task.name}</div>
+      <div style="${STYLES.cardMeta}">
+        <span>${agentInfo.emoji}</span>
+        <span style="color:#9ca3af;flex:1;">${agentInfo.name}</span>
+        <span style="color:${statusInfo.color};font-weight:600;">${statusInfo.icon}</span>
+      </div>
+      <div style="${STYLES.cardFooter}">
+        <span title="${type === 'upcoming' ? '下次运行' : '执行时间'}">${time}</span>
+        <span title="耗时">${duration}</span>
+      </div>
+    </div>`;
   }
 
   // 主渲染函数
@@ -131,65 +119,58 @@ const TaskKanban = (() => {
       .filter(r => r.status === 'ok' || r.status === 'error')
       .slice(0, 5);
 
-    let html = `<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scroll-behavior:smooth;">`;
+    // 列定义
+    const columns = [
+      { label: '⏰ 即将执行', color: '#06b6d4', data: upcoming, type: 'upcoming' },
+      { label: '⚡ 最近运行', color: '#f59e0b', data: recent, type: 'running' },
+      { label: '✅ 已完成', color: '#22c55e', data: completed, type: 'completed' }
+    ];
 
-    // 即将执行列
-    html += `<div style="flex-shrink:0;">`;
-    html += `<div style="font-size:11px;color:#06b6d4;font-weight:600;margin-bottom:8px;padding:0 4px;">⏰ 即将执行</div>`;
-    html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
-    if (upcoming.length > 0) {
-      upcoming.forEach(task => {
-        html += renderTaskCard(task, 'upcoming');
-      });
-    } else {
-      html += `<div style="color:#4b5563;font-size:10px;padding:20px 10px;text-align:center;">暂无任务</div>`;
+    const emptyPlaceholder = '<div style="color:#4b5563;font-size:10px;padding:20px 10px;text-align:center;">暂无</div>';
+
+    let html = '<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scroll-behavior:smooth;">';
+
+    for (const col of columns) {
+      html += `<div style="flex-shrink:0;">`;
+      html += `<div style="${STYLES.columnHeader}color:${col.color};">${col.label}</div>`;
+      html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
+      html += col.data.length > 0
+        ? col.data.map(task => renderTaskCard(task, col.type)).join('')
+        : emptyPlaceholder;
+      html += `</div></div>`;
     }
-    html += `</div></div>`;
 
-    // 最近运行列
-    html += `<div style="flex-shrink:0;">`;
-    html += `<div style="font-size:11px;color:#f59e0b;font-weight:600;margin-bottom:8px;padding:0 4px;">⚡ 最近运行</div>`;
-    html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
-    if (recent.length > 0) {
-      recent.forEach(run => {
-        html += renderTaskCard(run, 'running');
-      });
-    } else {
-      html += `<div style="color:#4b5563;font-size:10px;padding:20px 10px;text-align:center;">暂无记录</div>`;
-    }
-    html += `</div></div>`;
-
-    // 已完成列
-    html += `<div style="flex-shrink:0;">`;
-    html += `<div style="font-size:11px;color:#22c55e;font-weight:600;margin-bottom:8px;padding:0 4px;">✅ 已完成</div>`;
-    html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
-    if (completed.length > 0) {
-      completed.forEach(run => {
-        html += renderTaskCard(run, 'completed');
-      });
-    } else {
-      html += `<div style="color:#4b5563;font-size:10px;padding:20px 10px;text-align:center;">暂无记录</div>`;
-    }
-    html += `</div></div>`;
-
-    html += `</div>`;
+    html += '</div>';
     return html;
   }
 
-  // 外部调用入口
+  // 防抖计时器和上次数据
+  let debounceTimer = null;
+  let lastData = null;
+
+  // 外部调用入口（带防抖）
   function refreshTaskKanban() {
     const data = window.openclawData;
     const container = document.getElementById('task-kanban-container');
 
-    if (!container || !data) {
-      if (container) {
-        container.innerHTML = '<div style="color:#6b7280;font-size:11px;text-align:center;padding:20px;">加载中...</div>';
-      }
+    if (!container) return;
+
+    // 防抖：如果数据未变，300ms内不重新渲染
+    if (lastData === JSON.stringify(data)) {
       return;
     }
 
-    const html = renderTaskKanban(data.cronJobs || [], data.recentRuns || []);
-    container.innerHTML = html;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      if (!data) {
+        container.innerHTML = '<div style="color:#6b7280;font-size:11px;text-align:center;padding:20px;">加载中...</div>';
+        return;
+      }
+
+      const html = renderTaskKanban(data.cronJobs || [], data.recentRuns || []);
+      container.innerHTML = html;
+      lastData = JSON.stringify(data);
+    }, 300);
   }
 
   return {

@@ -4,6 +4,7 @@
 const OPENCLAW_POLL_INTERVAL = 5000;
 let openclawData = null;
 let openclawPollTimer = null;
+let pendingKanbanRefresh = false;
 
 const AGENT_STATUS_COLORS = { active: '#22c55e', idle: '#eab308', offline: '#6b7280' };
 const AGENT_STATUS_LABELS = { active: '活跃', idle: '待命', offline: '离线' };
@@ -27,8 +28,14 @@ async function fetchOpenClawStatus() {
       if (typeof updateWeather === 'function') updateWeather(data.cronJobs || []);
       // 活动墙: 刷新 Agent 动态
       if (typeof refreshActivityWall === 'function') refreshActivityWall();
-      // 任务看板: 刷新任务流转
-      if (typeof refreshTaskKanban === 'function') refreshTaskKanban();
+      // 任务看板: 刷新任务流转（防抖，避免频繁渲染）
+      if (typeof refreshTaskKanban === 'function' && !pendingKanbanRefresh) {
+        pendingKanbanRefresh = true;
+        setTimeout(() => {
+          refreshTaskKanban();
+          pendingKanbanRefresh = false;
+        }, 100);
+      }
       const dot = document.getElementById('openclaw-conn-dot');
       if (dot) dot.style.background = '#22c55e';
     }
