@@ -112,17 +112,36 @@ const TaskKanban = (() => {
   function renderTaskKanban(cronJobs, recentRuns) {
     if (!cronJobs || !recentRuns) return '';
 
+    // 建立jobId到cronJob的映射，用于查询任务名称和Agent信息
+    const jobMap = {};
+    for (const job of cronJobs) {
+      jobMap[job.id] = job;
+    }
+
+    // 增强recentRuns数据，添加缺失的name和agentId
+    const enrichedRuns = recentRuns.map(run => {
+      if (!run.name || !run.agentId) {
+        const sourceJob = jobMap[run.jobId];
+        return {
+          ...run,
+          name: run.name || sourceJob?.name || '未命名任务',
+          agentId: run.agentId || sourceJob?.agentId || 'main'
+        };
+      }
+      return run;
+    });
+
     // 即将执行：enabled 任务，按 nextRunAt 排序，取最近 5 个
     const upcoming = cronJobs
       .filter(j => j.enabled && j.nextRunAt)
       .sort((a, b) => (a.nextRunAt || '').localeCompare(b.nextRunAt || ''))
       .slice(0, 5);
 
-    // 最近运行：recentRuns 最新 5 条
-    const recent = recentRuns.slice(0, 5);
+    // 最近运行：enrichedRuns 最新 5 条
+    const recent = enrichedRuns.slice(0, 5);
 
     // 已完成：ok/error 状态，最近 5 条
-    const completed = recentRuns
+    const completed = enrichedRuns
       .filter(r => r.status === 'ok' || r.status === 'error')
       .slice(0, 5);
 
