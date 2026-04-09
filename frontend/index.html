@@ -225,6 +225,25 @@
             padding-right: 10px;
             box-sizing: border-box;
         }
+        /* OpenClaw 面板滚动容器 */
+        #openclaw-panel {
+            max-height: 600px;
+            overflow-y: auto;
+            scrollbar-color: #2a3141 #141722;
+        }
+        #openclaw-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        #openclaw-panel::-webkit-scrollbar-track {
+            background: #141722;
+        }
+        #openclaw-panel::-webkit-scrollbar-thumb {
+            background: #2a3141;
+            border-radius: 3px;
+        }
+        #openclaw-panel::-webkit-scrollbar-thumb:hover {
+            background: #3a4151;
+        }
         #btn-open-drawer {
             grid-column: 1 / -1;
             background: #78a340;

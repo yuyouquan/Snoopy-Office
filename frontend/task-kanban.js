@@ -71,24 +71,31 @@ const TaskKanban = (() => {
   function renderTaskCard(task, type) {
     if (!task) return '';
 
+    // 处理不同数据源的字段差异（cronJobs vs recentRuns）
+    const taskName = task.name || '未命名任务';
+    const agentId = task.agentId || 'main';
+    const lastStatus = task.lastStatus || task.status;
+    const durationMs = task.lastDurationMs || task.durationMs;
+    const runAt = task.lastRunAt || task.timestamp;
+
     // 确定状态信息
     let statusInfo = STATUS_MAP.pending;
     if (type === 'running') {
       statusInfo = task.status === 'running'
         ? STATUS_MAP.running
-        : STATUS_MAP[task.lastStatus] || STATUS_MAP.pending;
+        : STATUS_MAP[lastStatus] || STATUS_MAP.pending;
     } else if (type === 'completed') {
-      statusInfo = STATUS_MAP[task.lastStatus] || STATUS_MAP.pending;
+      statusInfo = STATUS_MAP[lastStatus] || STATUS_MAP.pending;
     }
 
-    const agentInfo = getAgentInfo(task.agentId);
-    const duration = formatDuration(task.lastDurationMs);
+    const agentInfo = getAgentInfo(agentId);
+    const duration = formatDuration(durationMs);
     const time = type === 'upcoming'
-      ? new Date(task.nextRunAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-      : formatRelativeTime(task.timestamp || task.lastRunAt);
+      ? task.nextRunAt ? new Date(task.nextRunAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '未定'
+      : formatRelativeTime(runAt);
 
     return `<div style="${STYLES.card}">
-      <div style="${STYLES.cardName}" title="${task.name}">${task.name}</div>
+      <div style="${STYLES.cardName}" title="${taskName}">${taskName}</div>
       <div style="${STYLES.cardMeta}">
         <span>${agentInfo.emoji}</span>
         <span style="color:#9ca3af;flex:1;">${agentInfo.name}</span>
