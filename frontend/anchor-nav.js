@@ -132,7 +132,7 @@ function injectAnchorStyles() {
     #anchor-nav {
       position: fixed;
       right: 8px;
-      top: 50%;
+      top: 42%;
       transform: translateY(-50%);
       z-index: 10000;
       display: flex;

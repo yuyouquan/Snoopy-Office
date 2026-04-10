@@ -227,7 +227,6 @@
         }
         /* OpenClaw 面板滚动容器 */
         #openclaw-panel {
-            max-height: 600px;
             overflow-y: auto;
             scrollbar-color: #2a3141 #141722;
         }
@@ -1270,7 +1269,7 @@
 
         <!-- 第三行: OpenClaw 状态面板 -->
         <div id="bottom-panels-row3" style="display:flex;gap:20px;width:1280px;max-width:none;margin-top:20px;margin-bottom:100px;">
-            <div id="openclaw-panel" style="width:1280px;background:#141722;border:4px solid #0e1119;padding:14px;display:flex;flex-direction:column;gap:8px;position:relative;overflow-x:auto;overflow-y:visible;">
+            <div id="openclaw-panel" style="width:1280px;background:#141722;border:4px solid #0e1119;padding:14px;display:flex;flex-direction:column;gap:8px;position:relative;overflow-x:hidden;">
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span style="color:#06b6d4;font-size:16px;font-weight:bold;letter-spacing:1px;">OpenClaw 控 制 台</span>
                     <span id="openclaw-conn-dot" style="width:8px;height:8px;border-radius:50%;background:#555;display:inline-block;"></span>
@@ -1344,7 +1343,7 @@
     </div>
 
     <!-- 专注模式 & 音效 浮动按钮 -->
-    <div id="floating-tools" style="position:fixed;bottom:120px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:10001;">
+    <div id="floating-tools" style="position:fixed;bottom:180px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:10001;">
         <button id="focus-toggle-btn" onclick="focusToggle()" style="width:40px;height:40px;border-radius:50%;background:rgba(10,10,20,0.9);border:1px solid #333;color:#e5e7eb;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.3);" title="专注模式">🎯</button>
         <button id="sound-toggle-btn" onclick="toggleSoundPanel()" style="width:40px;height:40px;border-radius:50%;background:rgba(10,10,20,0.9);border:1px solid #333;color:#e5e7eb;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.3);" title="环境音效">🔇</button>
     </div>

@@ -226,9 +226,9 @@ function renderAgentGrid(agentDetails) {
   if (!titleEl) {
     titleEl = document.createElement('div');
     titleEl.id = 'agent-grid-title';
-    titleEl.style.cssText = 'color:#9ca3af;font-size:11px;display:flex;align-items:center;gap:6px;margin-top:10px;';
     container.parentNode.insertBefore(titleEl, container);
   }
+  titleEl.style.cssText = 'color:#9ca3af;font-size:11px;display:flex;align-items:center;gap:6px;margin-top:10px;margin-bottom:6px;';
   titleEl.innerHTML = titleHtml;
 
   // Agent cards

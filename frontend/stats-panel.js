@@ -40,7 +40,7 @@ function injectStatsStyles() {
   const s = document.createElement('style');
   s.id = 'stats-v2-styles';
   s.textContent = `
-    #stats-dashboard{font-family:ArkPixel,monospace;max-height:360px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#444 transparent}
+    #stats-dashboard{font-family:ArkPixel,monospace;overflow:visible;scrollbar-width:thin;scrollbar-color:#444 transparent}
     #stats-dashboard::-webkit-scrollbar{width:4px}
     #stats-dashboard::-webkit-scrollbar-thumb{background:#444;border-radius:2px}
     .sp-section{padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
@@ -58,7 +58,7 @@ function injectStatsStyles() {
     .sp-legend-dot{width:8px;height:8px;border-radius:2px}
     .sp-bars{display:flex;align-items:flex-end;gap:4px;height:56px;padding:0 2px}
     .sp-bar-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:2px}
-    .sp-bar{width:100%;border-radius:3px 3px 1px 1px;transition:height 0.4s cubic-bezier(0.34,1.56,0.64,1);position:relative;cursor:default}
+    .sp-bar{width:100%;max-width:32px;border-radius:3px 3px 1px 1px;transition:height 0.4s cubic-bezier(0.34,1.56,0.64,1);position:relative;cursor:default}
     .sp-bar:hover .sp-tip{display:block}
     .sp-bar-label{font-size:9px;color:#6b7280}
     .sp-bar-count{font-size:8px;color:#6b7280;margin-top:1px}
@@ -364,6 +364,11 @@ function renderAgentLeaderboard(el) {
 async function fetchAndRenderStats() {
   const dashboard = document.getElementById('stats-dashboard');
   if (!dashboard) return;
+
+  // Clear initial placeholder content on first run
+  if (!document.getElementById('stats-timeline')) {
+    dashboard.innerHTML = '';
+  }
 
   // Ensure section containers
   for (const id of ['stats-timeline', 'stats-weekly', 'stats-cron', 'stats-leaderboard']) {

@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 添加分析和配置按钮
     const btnContainer = document.createElement('div');
     btnContainer.style.cssText = `
-      position: fixed; bottom: 60px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 999;
+      position: fixed; bottom: 68px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 999;
     `;
 
     const analyticsBtn = document.createElement('button');
